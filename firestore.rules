@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Field validation for plant scan documents
+    function isValidScan(data) {
+      return data.userId is string 
+        && data.userId == request.auth.uid
+        // Prevent oversized image data: maximum 30,000 characters.
+        // Comfortably accommodates Firebase Storage URLs (~250 chars) and compact SVG sample previews,
+        // while strictly preventing multi-megabyte raw base64 image data dumps.
+        && data.imageUrl is string 
+        && data.imageUrl.size() > 0 
+        && data.imageUrl.size() <= 30000
+        // String size limits on descriptive and metadata fields
+        && (!('id' in data) || (data.id is string && data.id.size() <= 128))
+        && (!('condition' in data) || (data.condition is string && data.condition.size() <= 200))
+        && (!('severity' in data) || (data.severity is string && data.severity.size() <= 50))
+        && (!('language' in data) || (data.language is string && data.language.size() <= 10))
+        && (!('uncertaintyNote' in data) || (data.uncertaintyNote is string && data.uncertaintyNote.size() <= 2000))
+        && (!('createdAtFormatted' in data) || (data.createdAtFormatted is string && data.createdAtFormatted.size() <= 100))
+        && (!('createdAtISO' in data) || (data.createdAtISO is string && data.createdAtISO.size() <= 60))
+        // Confidence score boundary validation
+        && (!('confidence' in data) || (data.confidence is number && data.confidence >= 0 && data.confidence <= 100))
+        // Array length limits
+        && (!('observations' in data) || (data.observations is list && data.observations.size() <= 20))
+        && (!('possibleCauses' in data) || (data.possibleCauses is list && data.possibleCauses.size() <= 20))
+        && (!('recommendedActions' in data) || (data.recommendedActions is list && data.recommendedActions.size() <= 20))
+        && (!('prevention' in data) || (data.prevention is list && data.prevention.size() <= 20))
+        // Classifier metadata validation
+        && (!('classifierMetadata' in data) || data.classifierMetadata is map);
+    }
+
+    // Top-level /scans collection
+    match /scans/{scanId} {
+      allow read, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId) 
+                    && isValidScan(request.resource.data);
+      allow update: if isOwner(resource.data.userId) 
+                    && isOwner(request.resource.data.userId) 
+                    && isValidScan(request.resource.data);
+    }
+    
+    // User profile and user-scoped subcollections (/users/{userId}/scans/{scanId})
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      match /scans/{scanId} {
+        allow read, delete: if isOwner(userId) 
+                            && (resource.data.userId == null || resource.data.userId == request.auth.uid);
+        allow create: if isOwner(userId) 
+                      && isValidScan(request.resource.data);
+        allow update: if isOwner(userId) 
+                      && isOwner(resource.data.userId)
+                      && isOwner(request.resource.data.userId)
+                      && isValidScan(request.resource.data);
+      }
+    }
+
+    // Default deny for all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
