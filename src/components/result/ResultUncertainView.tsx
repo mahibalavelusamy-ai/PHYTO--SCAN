@@ -35,13 +35,13 @@ export const ResultUncertainView: React.FC<ResultUncertainViewProps> = ({
       step: '01',
       icon: Sun,
       title: 'Bright Natural Daylight',
-      description: 'Photograph the leaf outdoors in morning or late afternoon light. Avoid harsh midday direct flash or deep shadows.',
+      description: 'Photograph the leaf outdoors in morning or late afternoon daylight. Avoid harsh midday direct flash or deep shadows.',
     },
     {
       step: '02',
       icon: Focus,
       title: 'Tap Screen to Focus',
-      description: 'Tap directly on the discolored spot or leaf margin on your camera screen before capturing so the edges are razor-sharp.',
+      description: 'Tap directly on the leaf blade or target area on your camera screen before capturing so the edges are razor-sharp.',
     },
     {
       step: '03',
@@ -69,13 +69,13 @@ export const ResultUncertainView: React.FC<ResultUncertainViewProps> = ({
             <div className="space-y-1.5">
               <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
                 <span className="w-2 h-2 rounded-full bg-amber-600 animate-pulse" />
-                <span>Diagnosis Inconclusive • Photo Retake Required</span>
+                <span>Assessment Inconclusive • Photo Retake Recommended</span>
               </div>
               <h3 className="text-2xl sm:text-3xl font-extrabold text-stone-900">
                 We Recommend Retaking the Leaf Photo
               </h3>
               <p className="text-xs sm:text-sm text-stone-700 max-w-2xl leading-relaxed">
-                Rather than providing an unreliable or guessed diagnosis, PhytoScan recommends capturing a fresh, sharper photograph. Image clarity or early symptom ambiguity prevented confident identification.
+                Rather than guessing or suggesting a potentially inaccurate diagnosis, PhytoScan recommends capturing a fresh, sharper photograph. Image clarity or subtle visual features prevented confident identification.
               </p>
             </div>
           </div>
@@ -109,41 +109,80 @@ export const ResultUncertainView: React.FC<ResultUncertainViewProps> = ({
           <div className="md:col-span-8 space-y-4">
             <div>
               <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1">
-                Diagnostic Assessment
+                Visual Assessment
               </p>
               <h4 className="text-2xl font-black text-stone-900">
-                Inconclusive Symptom Pattern
+                Inconclusive Visual Features
               </h4>
               <p className="text-xs sm:text-sm text-stone-600 mt-1 leading-relaxed">
                 {result.uncertaintyNote ||
-                  'The visual features in this image do not match any disease profile above our reliability threshold. No specific chemical or pathology treatment is prescribed.'}
+                  'Visual clarity or leaf patterns are insufficient for a reliable assessment. Severity is not determined, and a photo retake is recommended.'}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">Confidence</span>
-                <p className="text-xl font-black text-amber-900 mt-0.5">{result.confidence || 25}%</p>
-                <p className="text-[10px] text-amber-700 mt-0.5">Below certainty threshold</p>
+                <p className="text-lg sm:text-xl font-black text-amber-900 mt-0.5">{result.confidence || 25}%</p>
+                <p className="text-[10px] text-amber-700 mt-0.5">Below threshold</p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-600">Diagnosis Status</span>
+              {/* Explicit Severity: Not determined logic */}
+              <div className="p-3 rounded-2xl bg-amber-100/70 border border-amber-300">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900">Severity</span>
+                <p className="text-sm sm:text-base font-black text-amber-950 mt-1">Not determined</p>
+                <p className="text-[10px] text-amber-800 mt-0.5">Severity: Not determined</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-600">Diagnosis</span>
                 <p className="text-base font-extrabold text-stone-900 mt-0.5">Withheld</p>
-                <p className="text-[10px] text-stone-500 mt-0.5">Avoid misdiagnosis</p>
+                <p className="text-[10px] text-stone-500 mt-0.5">Retake photo</p>
               </div>
 
-              <div className="col-span-2 sm:col-span-1 p-3.5 rounded-2xl bg-stone-50 border border-stone-200">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-600">Recommended Action</span>
-                <p className="text-base font-extrabold text-amber-700 mt-0.5">New Photograph</p>
-                <p className="text-[10px] text-stone-500 mt-0.5">Follow retake guide</p>
+              <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-600">Action</span>
+                <p className="text-sm sm:text-base font-extrabold text-amber-700 mt-0.5">Retake Photo</p>
+                <p className="text-[10px] text-stone-500 mt-0.5">Follow guide</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Step-by-Step Retake Photo Guide */}
+      {/* Organized Section 1: Observations (Visual Findings & Image Evaluation) */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-stone-200">
+        <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-stone-100">
+          <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+            <FileQuestion className="w-4 h-4" />
+          </div>
+          <div>
+            <h4 className="text-base sm:text-lg font-bold text-stone-900">
+              Observations: Visual Findings & Image Clarity
+            </h4>
+            <p className="text-xs text-stone-500">
+              AI visual inspection results detailing why a conclusive diagnosis could not be established:
+            </p>
+          </div>
+        </div>
+
+        <ul className="space-y-3">
+          {result.observations && result.observations.length > 0 ? (
+            result.observations.map((obs, idx) => (
+              <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-stone-700 leading-relaxed bg-amber-50/50 p-3 rounded-xl border border-amber-100">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 shrink-0" />
+                <span>{obs}</span>
+              </li>
+            ))
+          ) : (
+            <li className="text-xs sm:text-sm text-stone-600 bg-amber-50/50 p-3 rounded-xl">
+              Visual feature resolution was too low or ambient lighting too uneven to extract distinct diagnostic markers. Severity is not determined.
+            </li>
+          )}
+        </ul>
+      </div>
+
+      {/* Organized Section 2: Actions (Step-by-Step Retake Photo Guide) */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-stone-200">
         <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-stone-100">
           <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
@@ -151,10 +190,10 @@ export const ResultUncertainView: React.FC<ResultUncertainViewProps> = ({
           </div>
           <div>
             <h4 className="text-base sm:text-lg font-bold text-stone-900">
-              5 Steps for a Conclusive Diagnostic Photo
+              Actions: 5 Steps for a Conclusive Diagnostic Photo
             </h4>
             <p className="text-xs text-stone-500">
-              Following these simple photography steps ensures the AI can accurately inspect microscopic vein patterns and lesion borders.
+              Follow these photography steps to ensure the AI can accurately inspect fine leaf margins, venation, and cellular texture.
             </p>
           </div>
         </div>

@@ -60,14 +60,38 @@ export const ResultView: React.FC<ResultViewProps> = ({
   }, [autoState]);
 
   const handleCopySummary = () => {
-    const text = `PhytoScan Assessment (${activeState.toUpperCase()}):
+    const isHealthyState = activeState === 'healthy';
+    const isUncertainState = activeState === 'uncertain';
+
+    let text = '';
+    if (isHealthyState) {
+      text = `PhytoScan Assessment (HEALTHY FOLIAGE):
+Plant Status: Healthy & Vigorous
+Confidence: ${result.confidence || 95}%
+Severity: None (Clean / Healthy)
+Health Indicators: ${result.observations?.length ? result.observations.join(', ') : 'Uniform green pigmentation, intact cuticle, no lesions'}
+Care & Maintenance: ${result.recommendedActions?.length ? result.recommendedActions.join('; ') : 'Routine root-zone watering, organic compost, canopy aeration'}
+Preservation: ${result.prevention?.length ? result.prevention.join('; ') : 'Clean garden tools, weekly underside leaf scouting, crop rotation'}
+Guidance: ${result.uncertaintyNote || 'Foliage verified healthy at time of photography.'}`;
+    } else if (isUncertainState) {
+      text = `PhytoScan Assessment (INCONCLUSIVE):
+Visual Status: Inconclusive (Photo Retake Recommended)
+Confidence: ${result.confidence || 25}%
+Severity: Not determined
+Observations: ${result.observations?.length ? result.observations.join(', ') : 'Visual features or lighting insufficient for confident diagnosis'}
+Recommended Action: Retake a clear, well-lit photo of the leaf (tap screen to focus, 10-20 cm away)
+Guidance: ${result.uncertaintyNote || 'Severity is not determined. Do not spray chemical treatments prematurely; retake the photo or consult local extension (KVK).'}`;
+    } else {
+      text = `PhytoScan Assessment (${activeState.toUpperCase()}):
 Condition: ${result.condition}
 Confidence: ${result.confidence}%
-Severity: ${result.severity}
-Observations: ${result.observations.join(', ')}
-Actions: ${result.recommendedActions.join('; ')}
-Prevention: ${result.prevention.join('; ')}
-Note: ${result.uncertaintyNote}`;
+Severity: ${result.severity || 'Moderate'}
+Observations: ${result.observations?.join(', ') || 'Observed symptoms recorded'}
+Actions: ${result.recommendedActions?.join('; ') || 'Standard recommended actions'}
+Prevention: ${result.prevention?.join('; ') || 'Crop hygiene practices'}
+Note: ${result.uncertaintyNote || 'Guidance provided by PhytoScan.'}`;
+    }
+
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);

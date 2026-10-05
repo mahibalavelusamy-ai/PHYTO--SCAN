@@ -94,8 +94,8 @@ export const RESULT_STATE_METAS: Record<ResultState, ResultStateMeta> = {
   healthy: {
     id: 'healthy',
     label: 'Healthy Foliage',
-    badgeLabel: 'Healthy • No Disease Detected',
-    description: 'The leaf specimen shows vigorous growth with no visible signs of pathogen infection.',
+    badgeLabel: 'Healthy • Prime Foliage',
+    description: 'The leaf specimen shows vigorous vegetative growth, optimal green pigmentation, and healthy tissue structure.',
     colorClass: {
       bg: 'bg-emerald-50',
       border: 'border-emerald-300',
@@ -121,7 +121,7 @@ export const RESULT_STATE_METAS: Record<ResultState, ResultStateMeta> = {
     id: 'uncertain',
     label: 'Uncertain / Inconclusive',
     badgeLabel: 'Uncertain • Photo Retake Recommended',
-    description: 'Symptoms are ambiguous or image clarity is insufficient for a confident diagnosis.',
+    description: 'Image clarity or visual features are insufficient; severity is not determined and photo retake is recommended.',
     colorClass: {
       bg: 'bg-amber-50',
       border: 'border-amber-300',

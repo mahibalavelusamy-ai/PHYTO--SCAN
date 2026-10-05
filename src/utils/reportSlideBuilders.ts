@@ -178,15 +178,30 @@ export function buildSlide1(
     bold: true,
     color: '92400E',
   });
-  slide1.addText(result.severity || 'Moderate', {
+  const isHealthy =
+    result.condition?.toLowerCase().includes('healthy') ||
+    result.severity?.toLowerCase() === 'none';
+  const isUncertain =
+    result.condition?.toLowerCase().includes('uncertain') ||
+    result.condition?.toLowerCase().includes('not sure') ||
+    result.condition?.toLowerCase().includes('inconclusive') ||
+    result.severity?.toLowerCase().includes('not determined');
+
+  const severityDisplay = isUncertain
+    ? 'Not determined'
+    : isHealthy
+    ? 'None (Clean)'
+    : (result.severity || 'Moderate');
+
+  slide1.addText(severityDisplay, {
     x: 7.1,
     y: 3.75,
     w: 1.9,
     h: 0.6,
     fontFace: FONT_FACE,
-    fontSize: 16,
+    fontSize: isUncertain ? 12 : 16,
     bold: true,
-    color: 'B45309',
+    color: isUncertain ? 'B45309' : isHealthy ? '047857' : 'B45309',
     fit: 'shrink',
   });
 }

@@ -72,6 +72,19 @@ export const ResultPrimaryCard: React.FC<ResultPrimaryCardProps> = ({
         label: t.severityNone,
       };
     }
+    if (
+      s.includes('not determined') ||
+      s.includes('uncertain') ||
+      s.includes('unknown') ||
+      s.includes('inconclusive') ||
+      s.includes('not sure')
+    ) {
+      return {
+        bg: 'bg-amber-100 text-amber-800 border-amber-200',
+        dot: 'bg-amber-500',
+        label: 'Not determined',
+      };
+    }
     return {
       bg: 'bg-stone-100 text-stone-700 border-stone-200',
       dot: 'bg-stone-500',
@@ -84,6 +97,18 @@ export const ResultPrimaryCard: React.FC<ResultPrimaryCardProps> = ({
     if (conf >= 60) return 'text-amber-700 bg-amber-50 border-amber-200';
     return 'text-rose-700 bg-rose-50 border-rose-200';
   };
+
+  const isHealthy =
+    result.condition?.toLowerCase().includes('healthy') ||
+    result.severity?.toLowerCase() === 'none';
+
+  const isUncertain =
+    result.condition?.toLowerCase().includes('not sure') ||
+    result.condition?.toLowerCase().includes('uncertain') ||
+    result.condition?.toLowerCase().includes('inconclusive') ||
+    result.isBelowGateThreshold === true ||
+    result.severity?.toLowerCase().includes('not determined') ||
+    result.severity?.toLowerCase().includes('unknown');
 
   const sevBadge = getSeverityBadge(result.severity);
 
@@ -122,14 +147,22 @@ export const ResultPrimaryCard: React.FC<ResultPrimaryCardProps> = ({
         <div className="md:col-span-8 space-y-5">
           <div>
             <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-1">
-              {t.possibleCondition}
+              {isHealthy
+                ? 'Plant Vitality Status'
+                : isUncertain
+                ? 'Visual Assessment'
+                : t.possibleCondition}
             </p>
-            <h3 className={`text-2xl sm:text-3xl font-extrabold leading-snug ${result.condition === 'Not sure' ? 'text-amber-700' : 'text-stone-900'}`}>
-              {result.condition}
+            <h3 className={`text-2xl sm:text-3xl font-extrabold leading-snug ${isUncertain ? 'text-amber-800' : 'text-stone-900'}`}>
+              {isHealthy
+                ? (result.condition.replace(/___/g, ' ').trim() || 'Healthy Foliage')
+                : isUncertain
+                ? 'Inconclusive / Uncertain'
+                : result.condition}
             </h3>
-            {result.condition === 'Not sure' && (
+            {isUncertain && (
               <p className="text-xs text-amber-800 font-medium mt-1">
-                On-device model confidence was below certainty threshold for reliable identification.
+                Visual clarity or symptom features were below the threshold for confident identification. A fresh photo is recommended.
               </p>
             )}
           </div>
@@ -139,7 +172,7 @@ export const ResultPrimaryCard: React.FC<ResultPrimaryCardProps> = ({
             {/* Confidence metric */}
             <div className={`p-4 rounded-2xl border ${getConfidenceColor(result.confidence)}`}>
               <p className="text-[11px] font-bold uppercase tracking-wider opacity-80 mb-1">
-                {t.confidence}
+                {isHealthy ? 'Health Confidence' : t.confidence}
               </p>
               <div className="flex items-baseline gap-1">
                 <span className="text-2xl sm:text-3xl font-black">
@@ -155,18 +188,28 @@ export const ResultPrimaryCard: React.FC<ResultPrimaryCardProps> = ({
             </div>
 
             {/* Severity metric */}
-            <div className={`p-4 rounded-2xl border ${sevBadge.bg}`}>
+            <div className={`p-4 rounded-2xl border ${isUncertain ? 'bg-amber-100 text-amber-900 border-amber-200' : sevBadge.bg}`}>
               <p className="text-[11px] font-bold uppercase tracking-wider opacity-80 mb-1">
-                {t.severity}
+                {isHealthy
+                  ? 'Foliage Condition'
+                  : 'Severity'}
               </p>
               <div className="flex items-center gap-2 mt-1">
-                <span className={`w-2.5 h-2.5 rounded-full ${sevBadge.dot}`} />
+                <span className={`w-2.5 h-2.5 rounded-full ${isUncertain ? 'bg-amber-500' : sevBadge.dot}`} />
                 <span className="text-lg sm:text-xl font-extrabold">
-                  {sevBadge.label}
+                  {isUncertain
+                    ? 'Not determined'
+                    : isHealthy
+                    ? 'Clean / Healthy'
+                    : sevBadge.label}
                 </span>
               </div>
               <p className="text-[10px] opacity-75 mt-1.5">
-                Pathology Stage
+                {isUncertain
+                  ? 'Severity: Not determined'
+                  : isHealthy
+                  ? 'No lesions present'
+                  : 'Pathology Stage'}
               </p>
             </div>
 

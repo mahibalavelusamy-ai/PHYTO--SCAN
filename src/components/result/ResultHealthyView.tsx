@@ -98,10 +98,10 @@ export const ResultHealthyView: React.FC<ResultHealthyViewProps> = ({
                 <span>Healthy Specimen Verified</span>
               </div>
               <h3 className="text-xl sm:text-2xl font-extrabold text-stone-900 mt-1">
-                No Visible Plant Disease Detected
+                Healthy Foliage — Verified Vigorous
               </h3>
               <p className="text-xs sm:text-sm text-stone-600 mt-0.5">
-                The leaf displays vigorous, healthy foliage without pathological lesions or nutritional distress.
+                The leaf displays vigorous, healthy foliage with vibrant natural pigmentation and prime vegetative vigor.
               </p>
             </div>
           </div>
@@ -133,13 +133,13 @@ export const ResultHealthyView: React.FC<ResultHealthyViewProps> = ({
           <div className="md:col-span-8 space-y-5">
             <div>
               <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">
-                Crop Health Status
+                Plant Vitality Status
               </p>
               <h3 className="text-2xl sm:text-3xl font-extrabold text-stone-900">
                 {cropName ? `${cropName} — Healthy Foliage` : 'Healthy Plant'}
               </h3>
               <p className="text-xs sm:text-sm text-stone-600 mt-1">
-                Foliage exhibits prime photosynthetic pigmentation with no signs of fungal or bacterial pathogens.
+                Foliage exhibits prime photosynthetic pigmentation, optimal chlorophyll synthesis, and intact cellular structure.
               </p>
             </div>
 
@@ -160,16 +160,16 @@ export const ResultHealthyView: React.FC<ResultHealthyViewProps> = ({
                 </div>
               </div>
 
-              {/* Disease Severity: None */}
+              {/* Foliage Condition */}
               <div className="p-4 rounded-2xl border border-teal-200 bg-teal-50/70 text-teal-900">
                 <p className="text-[11px] font-bold uppercase tracking-wider opacity-80 mb-1">
-                  Pathology Presence
+                  Foliage Condition
                 </p>
                 <div className="flex items-center gap-1.5 mt-1">
                   <span className="w-2.5 h-2.5 rounded-full bg-teal-600" />
-                  <span className="text-lg sm:text-xl font-extrabold">None (Clean)</span>
+                  <span className="text-lg sm:text-xl font-extrabold">Clean / Optimal</span>
                 </div>
-                <p className="text-[10px] text-teal-700/80 mt-1.5">No disease detected</p>
+                <p className="text-[10px] text-teal-700/80 mt-1.5">No damage detected</p>
               </div>
 
               {/* Plant Status */}
@@ -241,10 +241,10 @@ export const ResultHealthyView: React.FC<ResultHealthyViewProps> = ({
           <div className="w-8 h-8 rounded-xl bg-emerald-900/60 text-emerald-300 flex items-center justify-center border border-emerald-700/50">
             <ShieldCheck className="w-4 h-4" />
           </div>
-          <h4>Proactive Disease Prevention Strategy</h4>
+          <h4>Plant Health Preservation Strategy</h4>
         </div>
         <p className="text-xs sm:text-sm text-emerald-100/90 mb-4 leading-relaxed">
-          Maintaining clean foliage now is far easier and more cost-effective than treating advanced fungal outbreaks later:
+          Maintaining clean foliage now preserves natural plant immunity and sustains high harvest yields:
         </p>
         <ul className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {preventionPractices.map((prev, idx) => (
@@ -267,12 +267,12 @@ export const ResultHealthyView: React.FC<ResultHealthyViewProps> = ({
           <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <h5 className="font-bold text-xs sm:text-sm text-emerald-900 uppercase tracking-wider">
-              Plant Health Assurance & Monitoring Note
+              Plant Health Assurance & Monitoring Guidance
             </h5>
             <p className="text-xs sm:text-sm leading-relaxed text-emerald-900/90">
-              {result.uncertaintyNote && !result.uncertaintyNote.toLowerCase().includes('inconclusive')
+              {result.uncertaintyNote && !result.uncertaintyNote.toLowerCase().includes('inconclusive') && !result.uncertaintyNote.toLowerCase().includes('disease')
                 ? result.uncertaintyNote
-                : 'This assessment verifies that no visible foliar diseases were detected in the photographed leaf specimen. Continue routine weekly inspections as weather temperature and relative humidity change throughout the season.'}
+                : 'This assessment verifies that the photographed leaf specimen is healthy and vigorous. Continue routine weekly monitoring and balanced watering throughout the growing season.'}
             </p>
           </div>
         </div>

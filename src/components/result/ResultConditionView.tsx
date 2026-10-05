@@ -4,6 +4,7 @@ import {
   Download,
   BookmarkCheck,
   AlertTriangle,
+  AlertCircle,
 } from 'lucide-react';
 import { PlantAnalysisResult } from '../../services/plantAnalysis/types';
 import { Language, translations } from '../../utils/i18n';
@@ -46,6 +47,36 @@ export const ResultConditionView: React.FC<ResultConditionViewProps> = ({
 
   return (
     <div className="space-y-8 animate-fadeIn">
+      {/* Color-Coded Header: Condition Detected */}
+      <div className="p-5 sm:p-6 rounded-3xl bg-rose-50/90 border-2 border-rose-300 text-rose-950 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-600/20 shrink-0">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
+                <span>Condition Detected • {result.severity || 'Moderate'} Severity</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-extrabold text-stone-900 mt-1">
+                {result.condition}
+              </h3>
+              <p className="text-xs sm:text-sm text-stone-600 mt-0.5">
+                AI diagnostic assessment identified symptomatic lesion patterns with {result.confidence}% confidence.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onReset}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-bold shadow-xs transition-colors cursor-pointer shrink-0"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Scan Another</span>
+          </button>
+        </div>
+      </div>
+
       {/* Offline Guidance Banner if any */}
       {result.isOfflineGuidance && (
         <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 flex items-center gap-3 text-amber-900 shadow-sm">

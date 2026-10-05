@@ -10,6 +10,9 @@ interface ResultActionCardsProps {
 
 export const ResultActionCards: React.FC<ResultActionCardsProps> = ({ result, language }) => {
   const t = translations[language];
+  const isHealthy =
+    result.condition?.toLowerCase().includes('healthy') ||
+    result.severity?.toLowerCase() === 'none';
 
   return (
     <>
@@ -22,7 +25,7 @@ export const ResultActionCards: React.FC<ResultActionCardsProps> = ({ result, la
               <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
                 <Eye className="w-4 h-4" />
               </div>
-              <h4>{t.whatWeObserved}</h4>
+              <h4>{isHealthy ? 'Observed Health Indicators' : t.whatWeObserved}</h4>
             </div>
             <ul className="space-y-3">
               {result.observations && result.observations.length > 0 ? (
@@ -34,21 +37,23 @@ export const ResultActionCards: React.FC<ResultActionCardsProps> = ({ result, la
                 ))
               ) : (
                 <li className="text-xs sm:text-sm text-stone-500 italic">
-                  No specific visible lesion patterns detected.
+                  {isHealthy
+                    ? 'Uniform green foliage with no detectable pathogen lesions.'
+                    : 'No specific visible lesion patterns detected.'}
                 </li>
               )}
             </ul>
           </div>
         </div>
 
-        {/* Possible Causes */}
+        {/* Possible Causes / Vitality Factors */}
         <div className="bg-white rounded-3xl p-6 sm:p-7 shadow-sm border border-stone-200 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 text-stone-900 font-bold text-base sm:text-lg mb-4">
               <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
                 <Layers className="w-4 h-4" />
               </div>
-              <h4>{t.possibleCauses}</h4>
+              <h4>{isHealthy ? 'Growth & Vitality Factors' : t.possibleCauses}</h4>
             </div>
             <ul className="space-y-3">
               {result.possibleCauses && result.possibleCauses.length > 0 ? (
@@ -60,7 +65,9 @@ export const ResultActionCards: React.FC<ResultActionCardsProps> = ({ result, la
                 ))
               ) : (
                 <li className="text-xs sm:text-sm text-stone-500 italic">
-                  Physiological or environmental factors.
+                  {isHealthy
+                    ? 'Adequate sunlight, balanced hydration, and soil nutrition.'
+                    : 'Physiological or environmental factors.'}
                 </li>
               )}
             </ul>
@@ -70,14 +77,14 @@ export const ResultActionCards: React.FC<ResultActionCardsProps> = ({ result, la
 
       {/* Action Plan & Prevention Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Recommended Actions */}
+        {/* Recommended Actions / Care Routine */}
         <div className="bg-emerald-950 text-white rounded-3xl p-6 sm:p-7 shadow-xl shadow-emerald-950/10 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 font-bold text-base sm:text-lg mb-4 text-emerald-300">
               <div className="w-8 h-8 rounded-xl bg-emerald-900/60 text-emerald-300 flex items-center justify-center border border-emerald-700/50">
                 <Activity className="w-4 h-4" />
               </div>
-              <h4>{t.whatYouCanDo}</h4>
+              <h4>{isHealthy ? 'Care & Maintenance Routine' : t.whatYouCanDo}</h4>
             </div>
             <ul className="space-y-3">
               {result.recommendedActions && result.recommendedActions.length > 0 ? (
@@ -91,7 +98,9 @@ export const ResultActionCards: React.FC<ResultActionCardsProps> = ({ result, la
                 ))
               ) : (
                 <li className="text-xs sm:text-sm text-emerald-200/70 italic">
-                  Continue regular soil moisture monitoring and inspect underside of leaves weekly.
+                  {isHealthy
+                    ? 'Continue regular root-zone watering, adequate spacing, and balanced composting.'
+                    : 'Continue regular soil moisture monitoring and inspect underside of leaves weekly.'}
                 </li>
               )}
             </ul>
@@ -105,7 +114,7 @@ export const ResultActionCards: React.FC<ResultActionCardsProps> = ({ result, la
               <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
                 <ShieldCheck className="w-4 h-4" />
               </div>
-              <h4>{t.prevention}</h4>
+              <h4>{isHealthy ? 'Proactive Disease Prevention' : t.prevention}</h4>
             </div>
             <ul className="space-y-3">
               {result.prevention && result.prevention.length > 0 ? (
@@ -117,7 +126,7 @@ export const ResultActionCards: React.FC<ResultActionCardsProps> = ({ result, la
                 ))
               ) : (
                 <li className="text-xs sm:text-sm text-stone-500 italic">
-                  Follow good crop rotation and avoid overhead sprinkling.
+                  Follow good crop rotation, sanitize garden tools, and avoid overhead sprinkling.
                 </li>
               )}
             </ul>
