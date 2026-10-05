@@ -1,12 +1,16 @@
 /**
- * Confidence Gate Module
- * Architecture stage: MobileNetV2-based model -> class probabilities -> confidence gate -> Gemini guidance
+ * Confidence & Rejection Gate Module
  * 
- * Enforces quality, plausibility, and confidence thresholds:
- * If actual classifier confidence is below configured threshold, flags:
- * "Low confidence. Please retake the photo with better lighting or consult an agricultural expert."
+ * Strict architectural role:
+ * Evaluates MobileNetV3-Large classification output and preprocessed image metrics.
+ * Routes into one of 4 deterministic states:
+ * - STATE A — HEALTHY: No visible signs of disease detected (Confidence >= 60% and class is healthy)
+ * - STATE B — POSSIBLE CONDITION: Possible [Condition] (Confidence >= 60% and class is disease)
+ * - STATE C — UNCERTAIN: We couldn't identify the condition reliably (Confidence < 60% or poor image)
+ * - STATE D — OUTSIDE MODEL COVERAGE: Plant/crop is outside coverage
  */
-import { ClassifierOutput, PreprocessedImageData, GateDecision } from './types';
+import { ClassifierOutput, PreprocessedImageData, GateDecision, PlantHealthState } from './types';
+import { isCropSupportedByCustomModel } from '../../config/plantDiseaseLabels';
 
 export function evaluateConfidenceGate(
   classifierOutput: ClassifierOutput,
@@ -14,71 +18,72 @@ export function evaluateConfidenceGate(
 ): GateDecision {
   const prob = classifierOutput.primaryPrediction.probability;
   const qualityIssues = preprocessed.colorProfile.qualityIssues;
+  const isBlurryOrDark = preprocessed.colorProfile.isBlurry || preprocessed.colorProfile.isDark;
 
-  // 1. Check optical / exposure deficiencies
-  if (qualityIssues.length > 0) {
+  const photoTips = [
+    'Capture the whole plant or affected area clearly.',
+    'Avoid heavy shadows and ensure good natural lighting.',
+    'Keep the plant part in sharp focus.',
+    'Avoid extreme zoom or being too close to the subject.',
+    'Make sure the area of interest is clearly visible.',
+  ];
+
+  // 1. Severe optical or exposure issues -> Route immediately to STATE C (Uncertain)
+  if (isBlurryOrDark || qualityIssues.length > 1) {
     return {
       passed: false,
-      requiresGeminiVisualVerification: true,
-      confidenceTier: 'insufficient_quality',
-      gateNotes: `Low confidence. Please retake the photo with better lighting or consult an agricultural expert. (${qualityIssues.join('; ')})`,
-      recommendedFocusAreas: ['Lighting', 'Focus on leaf center', 'Resolution'],
-    };
-  }
-
-  // 2. Fine-tuned custom plant disease model confidence evaluation
-  if (classifierOutput.isCustomPlantModelLoaded) {
-    if (prob >= 0.75) {
-      return {
-        passed: true,
-        requiresGeminiVisualVerification: true,
-        confidenceTier: 'high',
-        gateNotes: `High confidence match (${Math.round(prob * 100)}%) for ${classifierOutput.primaryPrediction.className} from fine-tuned MobileNetV2 plant pathology model.`,
-        recommendedFocusAreas: ['Pathogen verification', 'Treatment urgency', 'Prevention regimen'],
-      };
-    }
-
-    if (prob >= 0.50) {
-      return {
-        passed: true,
-        requiresGeminiVisualVerification: true,
-        confidenceTier: 'moderate',
-        gateNotes: `Moderate confidence (${Math.round(prob * 100)}%) for ${classifierOutput.primaryPrediction.className}. Visual leaf confirmation required to rule out secondary infections or nutrient stress.`,
-        recommendedFocusAreas: ['Differential diagnosis', 'Secondary symptoms', 'Environmental factors'],
-      };
-    }
-
-    // Low confidence branch
-    return {
-      passed: false,
-      requiresGeminiVisualVerification: true,
+      state: 'uncertain',
       confidenceTier: 'low',
-      gateNotes: 'Low confidence. Please retake the photo with better lighting or consult an agricultural expert.',
-      recommendedFocusAreas: ['Symptom clarity', 'Uncertainty note', 'Extension contact'],
+      gateNotes: `Low image quality detected (${qualityIssues.join('; ')}). Condition could not be reliably determined.`,
+      photoTips,
     };
   }
 
-  // 3. MobileNetV2 Backbone mode (Standard ImageNet weights / 1280-dim feature vector)
-  // Transparently handles the status where custom fine-tuned weights are pending
-  const botanicalInfo = classifierOutput.isBotanicalSubjectLikely
-    ? 'Botanical / foliage features identified by MobileNetV2 backbone.'
-    : 'MobileNetV2 feature extraction completed.';
+  // 2. Check coverage of the detected crop
+  const detectedCrop = classifierOutput.primaryPrediction.crop || '';
+  if (detectedCrop && !isCropSupportedByCustomModel(detectedCrop)) {
+    return {
+      passed: false,
+      state: 'outside_coverage',
+      confidenceTier: prob >= 0.8 ? 'high' : prob >= 0.6 ? 'moderate' : 'low',
+      gateNotes: `This plant (${detectedCrop}) is not currently covered by the trained model.`,
+      photoTips,
+    };
+  }
 
-  if (prob >= 0.50) {
+  // 3. Low Confidence (< 60%) -> Route to STATE C (Uncertain)
+  if (prob < 0.60) {
+    return {
+      passed: false,
+      state: 'uncertain',
+      confidenceTier: 'low',
+      gateNotes: 'We could not identify the plant condition reliably due to low model certainty.',
+      photoTips,
+    };
+  }
+
+  // 4. Healthy Prediction -> Route to STATE A (Healthy)
+  const isHealthy =
+    classifierOutput.primaryPrediction.category === 'healthy' ||
+    classifierOutput.primaryPrediction.className.toLowerCase().includes('healthy') ||
+    (classifierOutput.primaryPrediction.labelString || '').toLowerCase().includes('healthy');
+
+  if (isHealthy) {
     return {
       passed: true,
-      requiresGeminiVisualVerification: true,
-      confidenceTier: 'moderate',
-      gateNotes: `${botanicalInfo} MobileNetV2 top class: "${classifierOutput.primaryPrediction.className}" (${Math.round(prob * 100)}%). Custom fine-tuned plant disease weights pending connection. Gemini visual pathology verification active.`,
-      recommendedFocusAreas: ['Visual leaf pathology', 'Lesion inspection', 'Actionable agronomic treatment'],
+      state: 'healthy',
+      confidenceTier: prob >= 0.80 ? 'high' : 'moderate',
+      gateNotes: 'No visible signs of the supported conditions were detected in this image.',
+      photoTips: ['Continue standard watering and monitor foliage weekly.'],
     };
   }
 
+  // 5. Supported Condition -> Route to STATE B (Possible Condition)
   return {
-    passed: false,
-    requiresGeminiVisualVerification: true,
-    confidenceTier: 'low',
-    gateNotes: 'Low confidence. Please retake the photo with better lighting or consult an agricultural expert.',
-    recommendedFocusAreas: ['Photo clarity', 'Lighting', 'Consult agricultural extension'],
+    passed: true,
+    state: 'condition',
+    confidenceTier: prob >= 0.80 ? 'high' : 'moderate',
+    gateNotes: `Possible condition identified with ${Math.round(prob * 100)}% model confidence.`,
+    photoTips: [],
   };
 }

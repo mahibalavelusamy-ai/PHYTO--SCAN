@@ -192,7 +192,7 @@ app.post('/api/analyze-plant', rateLimiter, async (req: Request, res: Response) 
 });
 
 // 5. Multi-Turn Agronomist Chat Endpoint
-app.post('/api/chat-plant', rateLimiter, async (req: Request, res: Response) => {
+app.post(['/api/chat-plant', '/api/plant-chat'], rateLimiter, async (req: Request, res: Response) => {
   try {
     const { messages, reportContext, language } = req.body || {};
 

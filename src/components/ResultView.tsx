@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { PlantAnalysisResult } from '../services/plantAnalysis/types';
 import { Language, translations } from '../utils/i18n';
 import { findKnowledgeMatches } from '../utils/kbSearch';
@@ -6,17 +6,24 @@ import { exportPlantReportToPPTX } from '../utils/reportExport';
 import {
   AlertTriangle,
   RotateCcw,
-  BookmarkCheck,
   Share2,
   Printer,
   Download,
+  CheckCircle2,
+  AlertCircle,
+  HelpCircle,
+  ImageOff,
 } from 'lucide-react';
 
-import { ResultPrimaryCard } from './ResultPrimaryCard';
-import { ResultKnowledgeCard } from './ResultKnowledgeCard';
-import { ResultHonestyCard } from './ResultHonestyCard';
-import { ResultActionCards } from './ResultActionCards';
-import { CropReportChat } from './CropReportChat';
+import {
+  determineResultState,
+  ResultState,
+  RESULT_STATE_METAS,
+} from './result/resultStateHelper';
+import { ResultHealthyView } from './result/ResultHealthyView';
+import { ResultUncertainView } from './result/ResultUncertainView';
+import { ResultUnsupportedView } from './result/ResultUnsupportedView';
+import { ResultConditionView } from './result/ResultConditionView';
 
 interface ResultViewProps {
   result: PlantAnalysisResult;
@@ -43,8 +50,17 @@ export const ResultView: React.FC<ResultViewProps> = ({
   const [exportError, setExportError] = useState<string | null>(null);
   const [isKbExpanded, setIsKbExpanded] = useState(false);
 
+  // Determine initial state from analysis result
+  const autoState = useMemo(() => determineResultState(result), [result]);
+  const [activeState, setActiveState] = useState<ResultState>(autoState);
+
+  // Sync state if a new result is analyzed
+  useEffect(() => {
+    setActiveState(autoState);
+  }, [autoState]);
+
   const handleCopySummary = () => {
-    const text = `PhytoScan Assessment:
+    const text = `PhytoScan Assessment (${activeState.toUpperCase()}):
 Condition: ${result.condition}
 Confidence: ${result.confidence}%
 Severity: ${result.severity}
@@ -108,10 +124,17 @@ Note: ${result.uncertaintyNote}`;
     return null;
   }, [result]);
 
+  const stateTabs: Array<{ id: ResultState; label: string; icon: React.ElementType }> = [
+    { id: 'healthy', label: 'Healthy', icon: CheckCircle2 },
+    { id: 'possible_condition', label: 'Possible Condition', icon: AlertCircle },
+    { id: 'uncertain', label: 'Uncertain', icon: HelpCircle },
+    { id: 'unsupported', label: 'Unsupported', icon: ImageOff },
+  ];
+
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8 animate-fadeIn">
       {/* Header bar: Title & Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-stone-200">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-stone-200">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-700">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -134,25 +157,61 @@ Note: ${result.uncertaintyNote}`;
           </button>
           <button
             onClick={handleCopySummary}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl transition-colors shadow-xs"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl transition-colors shadow-xs cursor-pointer"
           >
             <Share2 className="w-3.5 h-3.5 text-stone-500" />
             <span>{copied ? 'Copied!' : 'Share / Copy'}</span>
           </button>
           <button
             onClick={() => window.print()}
-            className="p-2 text-stone-600 hover:text-stone-900 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl transition-colors shadow-xs"
+            className="p-2 text-stone-600 hover:text-stone-900 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl transition-colors shadow-xs cursor-pointer"
             title="Print"
           >
             <Printer className="w-4 h-4" />
           </button>
           <button
             onClick={onReset}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>{t.scanAnotherPlant}</span>
           </button>
+        </div>
+      </div>
+
+      {/* Four-State Result System Selector Bar */}
+      <div className="mb-6 p-2 rounded-2xl bg-stone-100/90 border border-stone-200/90 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 px-2 text-xs font-bold text-stone-500 uppercase tracking-wider">
+          <span>Diagnostic State:</span>
+          {activeState === autoState && (
+            <span className="text-[10px] font-mono font-medium text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-md">
+              Auto-Detected
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 w-full sm:w-auto">
+          {stateTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isCurrent = activeState === tab.id;
+            const meta = RESULT_STATE_METAS[tab.id];
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveState(tab.id)}
+                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  isCurrent
+                    ? `${meta.colorClass.badge} shadow-xs font-extrabold ring-1 ring-inset ${meta.colorClass.border}`
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-white/60 bg-transparent'
+                }`}
+                title={meta.description}
+              >
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -172,89 +231,57 @@ Note: ${result.uncertaintyNote}`;
         </div>
       )}
 
-      {/* Offline Guidance Banner */}
-      {result.isOfflineGuidance && (
-        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 flex items-center gap-3 text-amber-900 shadow-sm">
-          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-          <div>
-            <p className="text-sm font-extrabold tracking-wide">
-              {result.offlineBannerText ||
-                (result.classifierMetadata?.isCustomPlantModelLoaded
-                  ? 'Offline result from the on-device model. Lower accuracy for field photos.'
-                  : 'Offline guidance, lower accuracy.')}
-            </p>
-            <p className="text-xs text-amber-800 mt-0.5">
-              Cloud AI service is unavailable. Guidance generated strictly on-device without external server connection.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Honesty & Coverage Alerts */}
-      <ResultHonestyCard result={result} />
-
-      {/* Primary Diagnostic Summary Card */}
-      <ResultPrimaryCard result={result} imageSrc={imageSrc} language={language} />
-
-      {/* Known disease reference card (Reference data) */}
-      {kbMatch && (
-        <ResultKnowledgeCard
-          kbMatch={kbMatch}
-          isExpanded={isKbExpanded}
-          onToggle={() => setIsKbExpanded((prev) => !prev)}
+      {/* Active State View Rendering */}
+      {activeState === 'healthy' && (
+        <ResultHealthyView
+          result={result}
+          imageSrc={imageSrc}
+          language={language}
+          onReset={onReset}
+          isSaved={isSaved}
+          onSaveToHistory={onSaveToHistory}
+          isSaving={isSaving}
+          onDownloadReport={handleDownloadReport}
+          isExporting={isExporting}
+          onCopySummary={handleCopySummary}
+          copied={copied}
         />
       )}
 
-      {/* Detailed Analysis Breakdown & Action Cards */}
-      <ResultActionCards result={result} language={language} />
+      {activeState === 'uncertain' && (
+        <ResultUncertainView
+          result={result}
+          imageSrc={imageSrc}
+          language={language}
+          onReset={onReset}
+        />
+      )}
 
-      {/* Interactive Agronomist AI Chatbot & Audio Voice Consultation */}
-      <CropReportChat result={result} language={language} />
+      {activeState === 'unsupported' && (
+        <ResultUnsupportedView
+          result={result}
+          imageSrc={imageSrc}
+          language={language}
+          onReset={onReset}
+        />
+      )}
 
-      {/* Uncertainty & Safety Note Banner */}
-      <div className="rounded-3xl p-5 sm:p-6 bg-amber-50/70 border border-amber-200 text-amber-950 mb-8">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <h5 className="font-bold text-xs sm:text-sm text-amber-900 uppercase tracking-wider">
-              {t.safetyNoteTitle}
-            </h5>
-            <p className="text-xs sm:text-sm leading-relaxed text-amber-900/90">
-              {result.uncertaintyNote}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom CTA Row */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-        <button
-          onClick={handleDownloadReport}
-          disabled={isExporting}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 font-bold text-sm shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-        >
-          <Download className="w-4 h-4 text-emerald-600" />
-          <span>{isExporting ? 'Creating PowerPoint...' : 'Download report (.pptx)'}</span>
-        </button>
-
-        {onSaveToHistory && !isSaved && (
-          <button
-            onClick={onSaveToHistory}
-            disabled={isSaving}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 font-bold text-sm shadow-xs transition-colors cursor-pointer"
-          >
-            <BookmarkCheck className="w-4 h-4 text-emerald-600" />
-            <span>{isSaving ? t.savingToHistory : t.savedToHistory}</span>
-          </button>
-        )}
-        <button
-          onClick={onReset}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span>{t.scanAnotherPlant}</span>
-        </button>
-      </div>
+      {activeState === 'possible_condition' && (
+        <ResultConditionView
+          result={result}
+          imageSrc={imageSrc}
+          language={language}
+          onReset={onReset}
+          isSaved={isSaved}
+          onSaveToHistory={onSaveToHistory}
+          isSaving={isSaving}
+          onDownloadReport={handleDownloadReport}
+          isExporting={isExporting}
+          kbMatch={kbMatch}
+          isKbExpanded={isKbExpanded}
+          setIsKbExpanded={setIsKbExpanded}
+        />
+      )}
     </div>
   );
 };

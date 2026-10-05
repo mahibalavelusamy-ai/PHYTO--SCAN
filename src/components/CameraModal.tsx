@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, RefreshCw, X, AlertTriangle } from 'lucide-react';
+import { Camera, RefreshCw, X, AlertTriangle, Sparkles, Sun, Focus } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 
 interface CameraModalProps {
@@ -57,7 +57,7 @@ export const CameraModal: React.FC<CameraModalProps> = ({
       }
     } catch (err: any) {
       console.warn('Camera access failed:', err);
-      setCameraError(t.cameraPermissionError);
+      setCameraError('Camera permission denied or camera unavailable. Please check browser permissions.');
     }
   };
 
@@ -100,7 +100,8 @@ export const CameraModal: React.FC<CameraModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-stone-400 hover:text-white hover:bg-stone-800 transition-colors"
+            aria-label="Close camera"
+            className="p-1.5 rounded-full text-stone-400 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -114,9 +115,9 @@ export const CameraModal: React.FC<CameraModalProps> = ({
               <p className="text-sm leading-relaxed mb-4">{cameraError}</p>
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-white text-xs font-semibold"
+                className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-white text-xs font-semibold cursor-pointer"
               >
-                {t.close}
+                Close
               </button>
             </div>
           ) : (
@@ -128,14 +129,28 @@ export const CameraModal: React.FC<CameraModalProps> = ({
                 muted
                 className="w-full h-full object-cover"
               />
-              {/* Aiming Reticle / Leaf Frame */}
-              <div className="absolute inset-8 border-2 border-dashed border-emerald-400/60 rounded-2xl pointer-events-none flex items-center justify-center">
-                <span className="text-[11px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded bg-black/50 text-emerald-200 backdrop-blur-xs">
-                  Center Affected Leaf Here
+
+              {/* Aiming Reticle / Plant Frame */}
+              <div className="absolute inset-8 border-2 border-dashed border-emerald-400/70 rounded-2xl pointer-events-none flex flex-col items-center justify-between p-3">
+                <span className="text-[11px] font-semibold tracking-wide px-3 py-1 rounded-full bg-black/60 text-emerald-200 backdrop-blur-xs text-center">
+                  {t.cameraCenter}
                 </span>
+
+                <div className="flex items-center gap-3 text-[10px] text-stone-300 bg-black/60 px-3 py-1 rounded-full backdrop-blur-xs">
+                  <span className="flex items-center gap-1"><Sun className="w-3 h-3 text-amber-400" /> Good lighting</span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1"><Focus className="w-3 h-3 text-emerald-400" /> Keep in focus</span>
+                </div>
               </div>
             </>
           )}
+        </div>
+
+        {/* Small guidance bar */}
+        <div className="px-4 py-2 bg-stone-900 border-t border-stone-800/80 text-center">
+          <p className="text-[11px] text-stone-400 font-medium">
+            {t.cameraGuidance}
+          </p>
         </div>
 
         {/* Controls */}
@@ -144,7 +159,8 @@ export const CameraModal: React.FC<CameraModalProps> = ({
             onClick={switchCamera}
             disabled={!!cameraError}
             title={t.switchCamera}
-            className="p-3 rounded-full text-stone-300 hover:text-white hover:bg-stone-800 disabled:opacity-40 transition-colors"
+            aria-label={t.switchCamera}
+            className="p-3 rounded-full text-stone-300 hover:text-white hover:bg-stone-800 disabled:opacity-40 transition-colors cursor-pointer"
           >
             <RefreshCw className="w-5 h-5" />
           </button>
@@ -153,14 +169,15 @@ export const CameraModal: React.FC<CameraModalProps> = ({
           <button
             onClick={handleCapture}
             disabled={!!cameraError}
-            className="w-16 h-16 rounded-full border-4 border-white/80 p-1 flex items-center justify-center hover:scale-105 active:scale-95 disabled:opacity-40 transition-transform bg-transparent"
+            aria-label={t.capturePhoto}
+            className="w-16 h-16 rounded-full border-4 border-white/80 p-1 flex items-center justify-center hover:scale-105 active:scale-95 disabled:opacity-40 transition-transform bg-transparent cursor-pointer"
           >
             <div className="w-full h-full rounded-full bg-emerald-500 shadow-md shadow-emerald-500/50" />
           </button>
 
           <button
             onClick={onClose}
-            className="text-xs font-semibold text-stone-400 hover:text-white px-3 py-2 rounded-lg hover:bg-stone-800 transition-colors"
+            className="text-xs font-semibold text-stone-400 hover:text-white px-3 py-2 rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
           >
             {t.cancel}
           </button>

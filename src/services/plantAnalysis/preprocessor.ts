@@ -1,24 +1,15 @@
 /**
- * Preprocessing module for MobileNetV2 pipeline.
- * Normalizes input image to 224x224 RGB dimensions and validates image exposure quality.
+ * Preprocessing module for MobileNetV3-Large pipeline.
+ * Normalizes input plant image to 224x224 RGB dimensions and validates image exposure quality.
  */
 import * as tf from '@tensorflow/tfjs';
 import { PreprocessedImageData } from './types';
 
 /**
- * Preprocesses an input image tensor specifically for the fine-tuned MobileNetV2 plant-disease model.
- * 
- * WHY:
- * 1. Resolution (224x224 RGB): MobileNetV2 was designed and trained on 224x224 RGB inputs.
- *    Resizing bilinear to 224x224 ensures the spatial dimensions match the convolutional
- *    filter strides and feature-map bottlenecks.
- * 2. Normalization to [-1, 1] range: The PlantVillage MobileNetV2 transfer-learning pipeline
- *    uses tf.keras.applications.mobilenet_v2.preprocess_input, which normalizes raw 8-bit
- *    pixel intensities [0, 255] via: (pixel / 127.5 - 1.0).
- *    This centers pixel activations around zero within [-1.0, 1.0]. Omitting this or using [0, 1]
- *    scaling would saturate the ReLU6 layers and corrupt the output softmax probabilities.
+ * Preprocesses an input image tensor for MobileNetV3-Large plant disease inference.
+ * Resizes bilinear to 224x224 RGB and normalizes pixel intensities [-1, 1].
  */
-export function preprocessForPlantMobileNetV2(
+export function preprocessForPlantMobileNetV3(
   imageSource: HTMLImageElement | HTMLCanvasElement
 ): tf.Tensor4D {
   return tf.tidy(() => {
@@ -36,6 +27,9 @@ export function preprocessForPlantMobileNetV2(
   });
 }
 
+// Backward compatibility alias
+export const preprocessForPlantMobileNetV2 = preprocessForPlantMobileNetV3;
+
 export async function preprocessPlantImage(
   imageSource: string
 ): Promise<PreprocessedImageData> {
@@ -48,7 +42,7 @@ export async function preprocessPlantImage(
         const originalWidth = img.naturalWidth || img.width;
         const originalHeight = img.naturalHeight || img.height;
 
-        // MobileNetV2 standard input is 224x224 RGB
+        // MobileNetV3-Large standard input is 224x224 RGB
         const canvas = document.createElement('canvas');
         canvas.width = 224;
         canvas.height = 224;
@@ -58,59 +52,64 @@ export async function preprocessPlantImage(
           throw new Error('Canvas 2D context unavailable for image preprocessing.');
         }
 
-        // Center-crop and scale to 224x224
-        const minDim = Math.min(originalWidth, originalHeight);
-        const startX = (originalWidth - minDim) / 2;
-        const startY = (originalHeight - minDim) / 2;
+        ctx.drawImage(img, 0, 0, 224, 224);
+        const normalizedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
 
-        ctx.drawImage(
-          img,
-          startX,
-          startY,
-          minDim,
-          minDim,
-          0,
-          0,
-          224,
-          224
-        );
-
-        // Technical exposure and optical sanity validation
-        const imageData = ctx.getImageData(0, 0, 224, 224);
-        const data = imageData.data;
+        // Quality check on exposure, lighting, and contrast
+        const imgData = ctx.getImageData(0, 0, 224, 224);
+        const data = imgData.data;
 
         let totalBrightness = 0;
-        const totalSampled = data.length / 4;
+        const numPixels = data.length / 4;
+        const sampleStep = 8;
+        let samplesTaken = 0;
 
-        for (let i = 0; i < data.length; i += 4) {
+        for (let i = 0; i < data.length; i += 4 * sampleStep) {
           const r = data[i];
           const g = data[i + 1];
           const b = data[i + 2];
-          const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-          totalBrightness += brightness;
+          totalBrightness += 0.299 * r + 0.587 * g + 0.114 * b;
+          samplesTaken++;
         }
 
-        const avgBrightness = totalBrightness / totalSampled;
+        const avgBrightness = totalBrightness / Math.max(1, samplesTaken);
+
+        let varianceSum = 0;
+        for (let i = 0; i < data.length; i += 4 * sampleStep) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          varianceSum += Math.pow(lum - avgBrightness, 2);
+        }
+        const contrast = Math.sqrt(varianceSum / Math.max(1, samplesTaken));
+
         const qualityIssues: string[] = [];
+        const isDark = avgBrightness < 40;
+        const isBlurry = contrast < 18;
 
-        if (avgBrightness < 25) {
-          qualityIssues.push('Image is severely underexposed or too dark for accurate leaf analysis.');
-        } else if (avgBrightness > 245) {
-          qualityIssues.push('Image is severely overexposed or washed out.');
+        if (isDark) {
+          qualityIssues.push('Low lighting detected on the plant subject.');
+        } else if (avgBrightness > 225) {
+          qualityIssues.push('Overexposed image lighting.');
         }
 
-        const normalizedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        if (isBlurry) {
+          qualityIssues.push('Image may lack sufficient sharpness or focus.');
+        }
 
         resolve({
           originalDataUrl: imageSource,
-          normalizedDataUrl: normalizedDataUrl,
+          normalizedDataUrl,
           width: originalWidth,
           height: originalHeight,
           targetResolution: { width: 224, height: 224 },
           colorProfile: {
             averageBrightness: Math.round(avgBrightness),
-            contrast: 0.85,
+            contrast: Math.round(contrast),
             qualityIssues,
+            isBlurry,
+            isDark,
           },
         });
       } catch (err) {
@@ -119,7 +118,7 @@ export async function preprocessPlantImage(
     };
 
     img.onerror = () => {
-      reject(new Error('Failed to load image for MobileNetV2 preprocessing.'));
+      reject(new Error('Unable to decode the plant photograph. Please try another image.'));
     };
 
     img.src = imageSource;

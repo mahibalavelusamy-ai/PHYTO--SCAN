@@ -1,13 +1,13 @@
 import React, { useRef } from 'react';
-import { Camera, Upload, Sparkles, ChevronDown, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Camera, Upload, Sparkles, ChevronDown, ShieldCheck } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
-import { SAMPLE_LEAVES, SampleLeaf } from '../utils/sampleLeaves';
+import { SAMPLE_PLANTS, SamplePlant } from '../utils/sampleLeaves';
 
 interface HeroSectionProps {
   language: Language;
   onTakePhoto: () => void;
   onSelectImageFile: (file: File) => void;
-  onSelectSample: (sample: SampleLeaf) => void;
+  onSelectSample: (sample: SamplePlant) => void;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
@@ -47,22 +47,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
         {/* Primary Title: Scan. Diagnose. Act early. */}
         <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-stone-900 tracking-tight leading-tight mb-4">
-          Scan. Diagnose. Act early.
+          {t.heroTitle}
         </h1>
 
         {/* Subtitle */}
         <p className="text-base sm:text-lg text-stone-600 max-w-2xl mx-auto leading-relaxed mb-8">
-          Detect potential plant diseases from a simple photo. Get clear, actionable guidance for your crop.
+          {t.heroSubtitle}
         </p>
 
-        {/* Action Buttons: [ 📷 Scan Your Plant ] [ Learn More ] */}
+        {/* Action Buttons: [ 📷 Scan Your Plant ] [ Upload Photo ] [ Learn More ] */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-10">
           <button
             onClick={onTakePhoto}
             className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-7 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold shadow-lg shadow-emerald-600/25 hover:shadow-emerald-600/35 hover:-translate-y-0.5 transition-all text-sm sm:text-base cursor-pointer"
           >
             <Camera className="w-5 h-5 text-emerald-100" />
-            <span>Scan Your Plant</span>
+            <span>{t.scanYourPlant}</span>
           </button>
 
           <button
@@ -70,14 +70,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white hover:bg-stone-50 active:bg-stone-100 text-stone-800 font-semibold border border-stone-300 hover:border-emerald-500 shadow-sm hover:shadow hover:-translate-y-0.5 transition-all text-sm sm:text-base cursor-pointer"
           >
             <Upload className="w-4 h-4 text-emerald-600" />
-            <span>Upload Photo</span>
+            <span>{t.uploadPhoto}</span>
           </button>
 
           <button
             onClick={scrollToHowItWorks}
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-4 rounded-2xl bg-transparent hover:bg-emerald-50/60 text-stone-700 font-semibold text-sm transition-colors cursor-pointer"
           >
-            <span>Learn More</span>
+            <span>{t.learnMore}</span>
             <ChevronDown className="w-4 h-4 text-stone-500" />
           </button>
 
@@ -91,13 +91,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           />
         </div>
 
-        {/* Leaf Visual / Plant Image Showcase Container */}
+        {/* Visual Plant Showcase Container */}
         <div className="max-w-xl mx-auto mb-8">
           <div className="relative rounded-3xl bg-stone-900 border-4 border-white shadow-2xl overflow-hidden aspect-16/10 group">
-            {/* Specimen Leaf Visual Image */}
             <img
               src="https://images.unsplash.com/photo-1592150621744-aca64f48394a?auto=format&fit=crop&w=1200&q=80"
-              alt="Plant specimen inspection"
+              alt="Plant health inspection in field"
               className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500"
             />
 
@@ -113,29 +112,29 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             {/* Top Badge */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white text-[11px] font-mono flex items-center gap-1.5 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Specimen Visual • Ready for Scan</span>
+              <span>Plant Specimen • Ready for Scan</span>
             </div>
 
             {/* Bottom HUD Bar */}
             <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between text-white text-xs font-mono">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span className="font-sans font-bold">MobileNetV2 + Gemini Engine</span>
+                <span className="font-sans font-bold">MobileNetV3-Large Classifier</span>
               </div>
               <span className="text-[11px] text-stone-300 bg-white/10 px-2 py-0.5 rounded">
-                Tomato, Corn, Potato, Rice + 20 Crops
+                Tomato, Corn, Citrus, Pepper + 14 Crops
               </span>
             </div>
           </div>
         </div>
 
-        {/* Demo Leaf Samples Bar */}
+        {/* Verified Sample Plants Bar */}
         <div className="max-w-2xl mx-auto pt-6 border-t border-stone-200/80">
           <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3">
-            Or test with verified sample leaves:
+            {t.trySamples}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            {SAMPLE_LEAVES.map((sample) => (
+            {SAMPLE_PLANTS.map((sample) => (
               <button
                 key={sample.id}
                 onClick={() => onSelectSample(sample)}

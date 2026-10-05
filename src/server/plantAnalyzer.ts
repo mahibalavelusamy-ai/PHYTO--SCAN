@@ -19,8 +19,37 @@ export {
 
 dotenv.config();
 
-export const PRIMARY_MODEL = 'gemini-3.8-flash';
+export const PRIMARY_MODEL = 'gemini-3.5-flash';
 export const FALLBACK_MODEL = 'gemini-3.1-flash-lite';
+
+// In-memory cooldown tracking for models with exhausted quotas
+const modelExhaustionMap = new Map<string, number>();
+
+export function isQuotaExceeded(err: any): boolean {
+  if (!err) return false;
+  const msg = (err.message || '').toLowerCase();
+  return (
+    msg.includes('quota exceeded') ||
+    msg.includes('resource_exhausted') ||
+    msg.includes('exceeded your current quota') ||
+    msg.includes('generaterequestsperday')
+  );
+}
+
+export function isModelInCooldown(model: string): boolean {
+  const until = modelExhaustionMap.get(model);
+  if (!until) return false;
+  if (Date.now() > until) {
+    modelExhaustionMap.delete(model);
+    return false;
+  }
+  return true;
+}
+
+export function markModelExhausted(model: string, retryDelaySecs?: number): void {
+  const delayMs = (retryDelaySecs && retryDelaySecs > 0 ? retryDelaySecs : 1800) * 1000;
+  modelExhaustionMap.set(model, Date.now() + delayMs);
+}
 
 export interface AnalyzePlantRequest {
   imageBase64: string; // base64 string without data URL prefix or with it
@@ -102,6 +131,10 @@ async function callGeminiWithExponentialBackoff(
       }
     } catch (err: any) {
       lastError = err;
+      // If quota is exhausted (daily quota limit), do not waste time on backoff for this model; fail over immediately
+      if (isQuotaExceeded(err)) {
+        throw err;
+      }
       const isTransient = isTransientError(err);
       if (isTransient && attempt < maxAttempts - 1) {
         const backoffMs = Math.pow(2, attempt) * 1000;
@@ -257,47 +290,47 @@ Provide the diagnostic assessment strictly according to the required JSON schema
   ];
 
   let responseText = '';
-  let modelUsed = PRIMARY_MODEL;
+  // Determine model priority order based on active quota cooldown
+  const candidateModels = isModelInCooldown(PRIMARY_MODEL)
+    ? [FALLBACK_MODEL, PRIMARY_MODEL]
+    : [PRIMARY_MODEL, FALLBACK_MODEL];
 
-  // 1. Try Primary Model (gemini-3.8-flash) with exponential backoff on 429/503
-  try {
-    responseText = await callGeminiWithExponentialBackoff(
-      ai,
-      PRIMARY_MODEL,
-      contents,
-      systemInstruction,
-      2
-    );
-  } catch (primaryError: any) {
-    console.warn(
-      `Primary model (${PRIMARY_MODEL}) failed. Falling back to (${FALLBACK_MODEL}). Cause:`,
-      primaryError?.message || primaryError
-    );
+  let modelUsed = candidateModels[0];
+  let lastError: any = null;
 
-    // 2. Fallback Model (gemini-3.1-flash-lite) with exponential backoff
+  for (let i = 0; i < candidateModels.length; i++) {
+    const currentModel = candidateModels[i];
     try {
-      modelUsed = FALLBACK_MODEL;
+      modelUsed = currentModel;
       responseText = await callGeminiWithExponentialBackoff(
         ai,
-        FALLBACK_MODEL,
+        currentModel,
         contents,
         systemInstruction,
-        2
+        currentModel === FALLBACK_MODEL ? 2 : 1
       );
-    } catch (fallbackError: any) {
-      console.error(
-        `Both primary (${PRIMARY_MODEL}) and fallback (${FALLBACK_MODEL}) models failed:`,
-        fallbackError
-      );
-
-      const isTransient =
-        isTransientError(fallbackError) || isTransientError(primaryError);
-      if (isTransient) {
-        throw new Error(langConfig.messages.overloaded);
+      if (responseText) {
+        break;
       }
-
-      throw new Error(langConfig.messages.genericError);
+    } catch (modelErr: any) {
+      lastError = modelErr;
+      if (isQuotaExceeded(modelErr)) {
+        markModelExhausted(currentModel);
+      }
+      if (i < candidateModels.length - 1) {
+        console.info(`Model ${currentModel} rate limit/quota reached, transitioning to ${candidateModels[i + 1]}`);
+        continue;
+      }
     }
+  }
+
+  if (!responseText) {
+    console.error(`All model candidates (${candidateModels.join(', ')}) failed:`, lastError);
+    const isTransient = isTransientError(lastError);
+    if (isTransient) {
+      throw new Error(langConfig.messages.overloaded);
+    }
+    throw new Error(langConfig.messages.genericError);
   }
 
   try {

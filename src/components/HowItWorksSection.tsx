@@ -13,38 +13,37 @@ export const HowItWorksSection: React.FC<HowItWorksSectionProps> = ({
   onStartScan,
   onOpenSpecs,
 }) => {
+  const isTa = language === 'ta';
+
   const steps = [
     {
       step: '01',
       icon: Camera,
-      title: 'Capture',
-      subtitle: 'Photo',
-      description:
-        language === 'ta'
-          ? 'பாதிக்கப்பட்ட இலையை உங்கள் தொலைபேசி கேமரா மூலம் படமெடுக்கவும் அல்லது பதிவேற்றவும்.'
-          : 'Snap a clear leaf photo using your phone camera or upload an image from your gallery.',
+      title: isTa ? 'புகைப்படம் எடுங்கள்' : 'Capture Photo',
+      subtitle: isTa ? 'முழு தாவரம் அல்லது பகுதி' : 'Plant or affected part',
+      description: isTa
+        ? 'உங்கள் தொலைபேசி கேமரா மூலம் பாதிக்கப்பட்ட தாவரத்தை அல்லது இலையை தெளிவான வெளிச்சத்தில் புகைப்படம் எடுக்கவும்.'
+        : 'Snap a clear photo of your plant, leaf, fruit, or stem under good lighting or upload from your gallery.',
       highlight: 'Field Ready',
     },
     {
       step: '02',
       icon: Cpu,
-      title: 'Diagnose',
-      subtitle: 'MobileNetV2 + Confidence',
-      description:
-        language === 'ta'
-          ? 'MobileNetV2 நுண்ணறிவு மற்றும் Gemini AI மூலம் நம்பகமான துல்லியத்துடன் நோயை கண்டறிகிறது.'
-          : 'Dual-tier vision runs on-device MobileNetV2 with Google Gemini AI for calibrated confidence.',
-      highlight: 'Multimodal AI',
+      title: isTa ? 'கண்டறிதல்' : 'Diagnose',
+      subtitle: isTa ? 'MobileNetV3-Large + நம்பகத்தன்மை' : 'MobileNetV3-Large + Confidence',
+      description: isTa
+        ? 'MobileNetV3-Large நரம்பியல் மாதிரி தாவர நிலையை துல்லியமாக கணித்து நம்பகத்தன்மையை மதிப்பிடுகிறது.'
+        : 'On-device MobileNetV3-Large neural vision classifies plant condition and computes calibrated confidence.',
+      highlight: 'Neural Vision',
     },
     {
       step: '03',
       icon: Sparkles,
-      title: 'Act',
-      subtitle: 'Treatment + Prevention',
-      description:
-        language === 'ta'
-          ? 'இயற்கை மற்றும் ரசாயன சிகிச்சைகள், தெளிக்கும் கால இடைவெளி, தடுப்பு வழிகாட்டல்கள் உடனே கிடைக்கும்.'
-          : 'Immediate actionable guidance: organic solutions, chemical controls, and long-term prevention.',
+      title: isTa ? 'தீர்வு காணுங்கள்' : 'Act',
+      subtitle: isTa ? 'சிகிச்சை + தடுப்பு முறைகள்' : 'Treatment + Prevention',
+      description: isTa
+        ? 'விவசாய அறிவுத்தளத்திலிருந்து இயற்கை மற்றும் ரசாயன தீர்வுகள், தெளிக்கும் கால இடைவெளிகள் உடனே கிடைக்கும்.'
+        : 'Verified agricultural knowledge base provides immediate organic treatments, chemical options, and prevention.',
       highlight: 'Practical Steps',
     },
   ];
@@ -114,7 +113,7 @@ export const HowItWorksSection: React.FC<HowItWorksSectionProps> = ({
             onClick={onStartScan}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-sm transition-all cursor-pointer"
           >
-            <span>Scan Your Leaf Now</span>
+            <span>Scan Your Plant Now</span>
             <ArrowRight className="w-4 h-4" />
           </button>
           {onOpenSpecs && (

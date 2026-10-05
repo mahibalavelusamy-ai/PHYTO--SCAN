@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cpu, ShieldCheck, Sparkles, CheckCircle2, Loader2 } from 'lucide-react';
+import { Cpu, ShieldCheck, Sparkles, CheckCircle2, Loader2, Image as ImageIcon, FileCheck } from 'lucide-react';
 import { Language } from '../utils/i18n';
 
 interface AnalysisProgressModalProps {
@@ -21,26 +21,36 @@ export const AnalysisProgressModal: React.FC<AnalysisProgressModalProps> = ({
 
   const isTa = language === 'ta';
 
-  const stages = [
+  const steps = [
     {
-      id: 'preprocessing',
-      title: isTa ? 'படத்தை சீரமைத்தல் (224×224)' : 'Preprocessing & Normalization (224×224)',
-      desc: isTa ? 'இலையின் ஒளிர்வு, விளிம்பு பகுப்பாய்வு' : 'Color histograms and contrast validation',
+      id: 'preparing_image',
+      title: isTa ? '1. படத்தைத் தயார் செய்தல்' : '1. Preparing image',
+      desc: isTa ? '224×224 வண்ண பரிமாணம்' : 'Standardizing 224×224 RGB input',
     },
     {
-      id: 'mobilenetv2_classification',
-      title: isTa ? 'MobileNetV2 நோய்க் கண்டறிதல்' : 'MobileNetV2 Feature Extraction',
-      desc: isTa ? 'தாவர நோய்க்கூறு மாதிரியமைத்தல்' : 'Inference against PlantVillage pathology priors',
+      id: 'checking_quality',
+      title: isTa ? '2. படத்தின் தரத்தை சரிபார்த்தல்' : '2. Checking image quality',
+      desc: isTa ? 'வெளிச்சம் மற்றும் தெளிவு மதிப்பீடு' : 'Validating lighting, contrast, and focus',
     },
     {
-      id: 'confidence_gate',
-      title: isTa ? 'நம்பகத்தன்மை சரிபார்ப்பு' : 'Confidence Gate Assessment',
-      desc: isTa ? 'துல்லியம் மற்றும் நிச்சயமற்ற தன்மை மதிப்பீடு' : 'Plausibility thresholds & uncertainty boundary',
+      id: 'mobilenetv3_classification',
+      title: isTa ? '3. தாவர மாதிரி மதிப்பீடு (MobileNetV3)' : '3. Running plant-health model',
+      desc: isTa ? 'MobileNetV3-Large நரம்பியல் கணிப்பு' : 'MobileNetV3-Large condition classification',
     },
     {
-      id: 'gemini_guidance_synthesis',
-      title: isTa ? 'Gemini AI தீர்வு ஆலோசனை தயாரித்தல்' : 'Gemini Guidance Engine',
-      desc: isTa ? 'விரிவான விவசாய வழிகாட்டல் மற்றும் தடுப்பு முறைகள்' : 'Synthesizing agronomic advice & actions in real-time',
+      id: 'evaluating_confidence',
+      title: isTa ? '4. நம்பகத்தன்மையை மதிப்பிடுதல்' : '4. Evaluating confidence',
+      desc: isTa ? 'நம்பகத்தன்மை வாசல் சோதனை' : 'Calibrated certainty & rejection gate',
+    },
+    {
+      id: 'preparing_report',
+      title: isTa ? '5. சுகாதார அறிக்கையைத் தயார் செய்தல்' : '5. Preparing plant-health report',
+      desc: isTa ? 'விவசாய அறிவுத்தள தரவுகளுடன் இணைத்தல்' : 'Grounding in Agricultural Knowledge Base',
+    },
+    {
+      id: 'preparing_language_summary',
+      title: isTa ? '6. உங்கள் மொழியில் சுருக்கம் தயார் செய்தல்' : '6. Preparing your language summary',
+      desc: isTa ? 'எளிய வட்டார மொழி விளக்கம்' : 'Farmer-friendly localized explanation',
     },
   ];
 
@@ -48,66 +58,55 @@ export const AnalysisProgressModal: React.FC<AnalysisProgressModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-stone-200 p-6 flex flex-col items-center">
         {/* Animated Scanner Visual */}
-        <div className="relative w-48 h-48 rounded-2xl overflow-hidden bg-stone-900 border-2 border-emerald-500/50 shadow-inner mb-6">
+        <div className="relative w-40 h-40 rounded-2xl overflow-hidden bg-stone-900 border-2 border-emerald-500/50 shadow-inner mb-5">
           <img
             src={imageSrc}
-            alt="Scanning leaf"
+            alt="Scanning plant"
             className="w-full h-full object-cover filter brightness-95"
           />
 
           {/* Laser Scanner Beam */}
           <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400 shadow-[0_0_12px_#10b981] animate-bounce duration-1000 top-0 bottom-0 m-auto" />
 
-          {/* Grid overlay */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#10b98115_1px,transparent_1px),linear-gradient(to_bottom,#10b98115_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
+          {/* Corner target marks */}
+          <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-emerald-400" />
+          <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-emerald-400" />
+          <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-emerald-400" />
+          <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-emerald-400" />
+        </div>
 
-          <div className="absolute bottom-2 inset-x-2 flex justify-between items-center px-2 py-1 rounded bg-black/60 backdrop-blur-xs text-[10px] text-emerald-300 font-mono">
-            <span>RES: 224x224</span>
-            <span className="animate-pulse">ANALYZING...</span>
+        {/* Progress Bar */}
+        <div className="w-full mb-6">
+          <div className="flex items-center justify-between text-xs font-bold text-stone-700 mb-2">
+            <span>{isTa ? 'செயல்முறை முன்னேற்றம்' : 'Analysis Progress'}</span>
+            <span className="font-mono text-emerald-700">{progressPercent}%</span>
+          </div>
+          <div className="w-full h-2.5 bg-stone-100 rounded-full overflow-hidden p-0.5 border border-stone-200">
+            <div
+              className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
         </div>
 
-        <h3 className="font-extrabold text-lg sm:text-xl text-stone-900 mb-1 text-center">
-          {isTa ? 'இலையின் ஆரோக்கியம் ஆய்வு செய்யப்படுகிறது' : 'Diagnosing Plant Leaf'}
-        </h3>
-        <p className="text-xs text-stone-500 mb-6 text-center max-w-xs">
-          {isTa
-            ? 'MobileNetV2 நோய்க் கண்டறிதல் மற்றும் Gemini AI ஆலோசனை ஒருங்கிணைக்கப்படுகிறது.'
-            : 'Modular MobileNetV2 transfer feature pipeline coupled with Gemini multimodal reasoning.'}
-        </p>
-
-        {/* Progress Bar */}
-        <div className="w-full bg-stone-100 rounded-full h-2.5 overflow-hidden mb-6 border border-stone-200">
-          <div
-            className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 transition-all duration-300 rounded-full"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-
-        {/* Stages list */}
+        {/* 6 Sequential Steps */}
         <div className="w-full space-y-2.5">
-          {stages.map((st, idx) => {
-            const isCompleted =
-              (idx === 0 && progressPercent > 20) ||
-              (idx === 1 && progressPercent > 45) ||
-              (idx === 2 && progressPercent > 65) ||
-              (idx === 3 && progressPercent >= 95);
-
+          {steps.map((s, index) => {
+            const stepThresholds = [15, 30, 50, 68, 82, 94];
+            const isCompleted = progressPercent > stepThresholds[index];
             const isCurrent =
-              (idx === 0 && progressPercent <= 20) ||
-              (idx === 1 && progressPercent > 20 && progressPercent <= 45) ||
-              (idx === 2 && progressPercent > 45 && progressPercent <= 65) ||
-              (idx === 3 && progressPercent > 65);
+              progressPercent >= (stepThresholds[index - 1] || 0) &&
+              progressPercent <= stepThresholds[index];
 
             return (
               <div
-                key={st.id}
-                className={`flex items-start gap-3 p-2.5 rounded-xl border text-xs transition-all ${
+                key={s.id}
+                className={`flex items-start gap-3 p-2 rounded-xl transition-all ${
                   isCurrent
-                    ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950 font-semibold shadow-xs'
+                    ? 'bg-emerald-50/80 border border-emerald-200'
                     : isCompleted
-                    ? 'bg-stone-50 border-stone-200 text-stone-700'
-                    : 'bg-transparent border-transparent text-stone-400 opacity-60'
+                    ? 'opacity-80'
+                    : 'opacity-40'
                 }`}
               >
                 <div className="mt-0.5 shrink-0">
@@ -116,14 +115,20 @@ export const AnalysisProgressModal: React.FC<AnalysisProgressModalProps> = ({
                   ) : isCurrent ? (
                     <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
                   ) : (
-                    <div className="w-4 h-4 rounded-full border border-stone-300" />
+                    <div className="w-4 h-4 rounded-full border border-stone-300 flex items-center justify-center text-[9px] font-bold text-stone-400">
+                      {index + 1}
+                    </div>
                   )}
                 </div>
-                <div className="flex-1">
-                  <p className="leading-tight">{st.title}</p>
-                  <p className="text-[10px] text-stone-500 font-normal mt-0.5">
-                    {st.desc}
-                  </p>
+                <div>
+                  <h4
+                    className={`text-xs font-bold ${
+                      isCurrent ? 'text-emerald-900' : isCompleted ? 'text-stone-800' : 'text-stone-400'
+                    }`}
+                  >
+                    {s.title}
+                  </h4>
+                  <p className="text-[10px] text-stone-500">{s.desc}</p>
                 </div>
               </div>
             );

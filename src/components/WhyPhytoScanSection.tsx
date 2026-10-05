@@ -18,54 +18,50 @@ export const WhyPhytoScanSection: React.FC<WhyPhytoScanSectionProps> = ({
   language,
   onStartScan,
 }) => {
+  const isTa = language === 'ta';
+
   const features = [
     {
       icon: ShieldAlert,
-      title: 'Early Detection',
-      description:
-        language === 'ta'
-          ? 'ஆரம்ப நிலையிலேயே பூஞ்சை, பாக்டீரியா மற்றும் பூச்சி தாக்குதல்களை கண்டறிந்து மகசூல் இழப்பை தடுக்கிறது.'
-          : 'Catch fungal leaf spots, blights, and pests early before damage spreads across your entire field.',
+      title: isTa ? 'முன்கூட்டியே கண்டறிதல்' : 'Early Detection',
+      description: isTa
+        ? 'ஆரம்ப நிலையிலேயே பூஞ்சை, பாக்டீரியா மற்றும் பூச்சி தாக்குதல்களை கண்டறிந்து பயிர் மகசூல் இழப்பை தடுக்கிறது.'
+        : 'Catch plant spots, blights, and pests early before damage spreads across your field or garden.',
     },
     {
       icon: Languages,
-      title: 'Tamil Guidance',
-      description:
-        language === 'ta'
-          ? 'தமிழ், தெலுங்கு, கன்னடம், மலையாளம் மற்றும் ஆங்கிலத்தில் எளிய வட்டார மொழி விளக்கங்கள்.'
-          : 'Clear explanations in தமிழ் (Tamil), Telugu, Kannada, Malayalam, and English for field farmers.',
+      title: isTa ? 'வட்டார மொழி வழிகாட்டல்' : 'Tamil & Regional Guidance',
+      description: isTa
+        ? 'தமிழ், தெலுங்கு, கன்னடம், மலையாளம் மற்றும் ஆங்கிலத்தில் எளிய வட்டார மொழி விளக்கங்கள்.'
+        : 'Clear explanations in தமிழ் (Tamil), Telugu, Kannada, Malayalam, and English for field farmers.',
     },
     {
       icon: CheckCircle2,
-      title: 'Confidence Score',
-      description:
-        language === 'ta'
-          ? 'படத்தின் தெளிவுத்தன்மை மற்றும் நம்பகத்தன்மை சதவிகிதத்தை வெளிப்படையாக காட்டுகிறது.'
-          : 'Transparent certainty ratings with honesty checks and image quality gate warnings.',
+      title: isTa ? 'நம்பகத்தன்மை மதிப்பீடு' : 'Confidence Score',
+      description: isTa
+        ? 'படத்தின் தெளிவுத்தன்மை மற்றும் மாதிரி கணிப்பு சதவிகிதத்தை வெளிப்படையாக காட்டுகிறது.'
+        : 'Transparent certainty ratings with honesty checks and photo quality gate warnings.',
     },
     {
       icon: FileCheck,
-      title: 'Simple Advice',
-      description:
-        language === 'ta'
-          ? 'களத்தில் உடனடியாக செயல்படுத்தக்கூடிய எளிய இயற்கை மற்றும் ரசாயன தீர்வுகள்.'
-          : 'Practical, step-by-step organic remedies and chemical dosages ready for immediate farm application.',
+      title: isTa ? 'நேரடி விவசாய தீர்வுகள்' : 'Simple Advice',
+      description: isTa
+        ? 'களத்தில் உடனடியாக செயல்படுத்தக்கூடிய எளிய இயற்கை மற்றும் ரசாயன தீர்வுகள்.'
+        : 'Practical, step-by-step organic remedies and chemical dosages ready for immediate farm application.',
     },
     {
       icon: History,
-      title: 'Scan History',
-      description:
-        language === 'ta'
-          ? 'முந்தைய அனைத்து பரிசோதனை அறிக்கைகளும் பாதுகாப்பாக சேமிக்கப்பட்டு பயிரின் வளர்ச்சியை கண்காணிக்கிறது.'
-          : 'Cloud-synced scan records in Firestore to track disease recovery throughout the harvest season.',
+      title: isTa ? 'ஸ்கேன் வரலாறு' : 'Scan History',
+      description: isTa
+        ? 'முந்தைய அனைத்து பரிசோதனை அறிக்கைகளும் பாதுகாப்பாக சேமிக்கப்பட்டு பயிரின் வளர்ச்சியை கண்காணிக்கிறது.'
+        : 'Cloud-synced scan records in Firestore to track recovery throughout harvest seasons.',
     },
     {
       icon: Bot,
-      title: 'AI Assistant',
-      description:
-        language === 'ta'
-          ? 'குரல் மூலம் கேள்விகள் கேட்கக்கூடிய நுண்ணறிவு வேளாண்மை உதவியாளர் (Gemini Voice).'
-          : 'Multi-turn conversational Agronomist AI with microphone voice transcription in your language.',
+      title: isTa ? 'அறிக்கை உதவியாளர்' : 'Report Assistant & Audio',
+      description: isTa
+        ? 'அறிக்கையை குரல் வடிவில் கேட்கலாம் மற்றும் வட்டார மொழியில் சந்தேகங்களை கேட்டு தெரிந்து கொள்ளலாம்.'
+        : 'Listen to your report via voice narration and ask questions grounded strictly in the report.',
     },
   ];
 
@@ -85,7 +81,7 @@ export const WhyPhytoScanSection: React.FC<WhyPhytoScanSectionProps> = ({
           </p>
         </div>
 
-        {/* Feature Grid: 2 Columns on Mobile / Tablet, 3 Columns on Desktop */}
+        {/* Feature Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {features.map((feat, idx) => {
             const Icon = feat.icon;
@@ -112,17 +108,17 @@ export const WhyPhytoScanSection: React.FC<WhyPhytoScanSectionProps> = ({
         <div className="mt-12 pt-8 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-emerald-50/50 p-6 rounded-3xl border border-emerald-100">
           <div>
             <h4 className="text-base font-bold text-stone-900">
-              Notice leaf discoloration or spots on your crops?
+              {isTa ? 'பயிர்களில் நிறமாற்றம் அல்லது புள்ளிகளைக் காண்கிறீர்களா?' : 'Notice discoloration or spots on your crops?'}
             </h4>
             <p className="text-xs sm:text-sm text-stone-600 mt-0.5">
-              Take a photo right now to get instant disease diagnosis and treatment steps.
+              {isTa ? 'உடனடியாக புகைப்படம் எடுத்து தாவர சுகாதார மதிப்பீட்டைப் பெறுங்கள்.' : 'Take a photo right now to get an instant plant health assessment and clear next steps.'}
             </p>
           </div>
           <button
             onClick={onStartScan}
             className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-sm transition-colors cursor-pointer shrink-0"
           >
-            Start Leaf Scan
+            {isTa ? 'பயிரை ஸ்கேன் செய்க' : 'Start Plant Scan'}
           </button>
         </div>
       </div>

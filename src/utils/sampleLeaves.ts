@@ -153,7 +153,7 @@ function createLeafSvgDataUrl(type: 'early_blight' | 'corn_rust' | 'healthy' | '
   return `data:image/svg+xml;utf8,${encodeURIComponent(svgContent.trim())}`;
 }
 
-export interface SampleLeaf {
+export interface SamplePlant {
   id: string;
   nameEn: string;
   nameTa: string;
@@ -161,7 +161,9 @@ export interface SampleLeaf {
   dataUrl: string;
 }
 
-export const SAMPLE_LEAVES: SampleLeaf[] = [
+export type SampleLeaf = SamplePlant;
+
+export const SAMPLE_PLANTS: SamplePlant[] = [
   {
     id: 'early_blight',
     nameEn: 'Tomato (Early Blight)',
@@ -185,9 +187,11 @@ export const SAMPLE_LEAVES: SampleLeaf[] = [
   },
   {
     id: 'healthy',
-    nameEn: 'Pepper (Healthy Leaf)',
-    nameTa: 'மிளகாய் (ஆரோக்கியமான இலை)',
+    nameEn: 'Pepper (Healthy Plant)',
+    nameTa: 'மிளகாய் (ஆரோக்கியமான தாவரம்)',
     conditionHint: 'No infection / Pristine foliage',
     dataUrl: createLeafSvgDataUrl('healthy'),
   },
 ];
+
+export const SAMPLE_LEAVES = SAMPLE_PLANTS;

@@ -122,8 +122,7 @@ ROLE & BEHAVIORAL GUIDELINES:
       model: CHAT_MODEL,
     };
   } catch (err: any) {
-    console.warn(`Primary chat model ${CHAT_MODEL} encountered an issue:`, err?.message || err);
-    console.log(`Falling back to ${CHAT_FALLBACK_MODEL}...`);
+    console.info(`Chat model ${CHAT_MODEL} unavailable (${err?.status || err?.message}), falling back to ${CHAT_FALLBACK_MODEL}...`);
     chosenModel = CHAT_FALLBACK_MODEL;
 
     const fallbackResponse = await ai.models.generateContent({

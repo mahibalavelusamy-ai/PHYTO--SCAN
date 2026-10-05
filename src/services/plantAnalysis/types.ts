@@ -79,6 +79,7 @@ export interface PlantAnalysisResult {
     featureVectorLength?: number;
     qualityPassed: boolean;
     inferenceTimeMs: number;
+    modelStatusNotes?: string;
   };
 }
 

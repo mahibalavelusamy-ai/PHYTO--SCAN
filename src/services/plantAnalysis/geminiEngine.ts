@@ -1,68 +1,87 @@
 /**
- * Gemini Guidance Engine Module
- * Connects to the secure server-side Gemini multimodal API endpoint.
- * Synthesizes plant health diagnostics, observations, actions, and safety guidance.
+ * Gemini Explanation Engine Module
+ * Connects to the secure server-side Gemini endpoint.
  * 
- * IMPORTANT: Gemini does not silently replace MobileNetV2. It receives the real MobileNetV2
- * feature extraction and prediction context, and translates visual symptoms into actionable farmer guidance.
+ * STRICT ARCHITECTURAL RULE:
+ * Gemini NEVER inspects the image for diagnosis.
+ * Gemini receives ONLY the structured plant health report produced by
+ * MobileNetV3-Large and the Agricultural Knowledge Base.
+ * It translates, summarizes, and produces natural farmer-friendly text and audio narration.
  */
-import { ClassifierOutput, GateDecision, PlantAnalysisResult } from './types';
+import { PlantAnalysisResult } from './types';
 import { Language } from '../../utils/i18n';
 
-export async function requestGeminiGuidance(
-  imageDataUrl: string,
-  language: Language,
-  classifierOutput: ClassifierOutput,
-  gateDecision: GateDecision
+export async function requestGeminiExplanation(
+  structuredReport: PlantAnalysisResult,
+  language: Language
 ): Promise<PlantAnalysisResult> {
-  const payload = {
-    imageBase64: imageDataUrl,
-    language: language,
-    classifierContext: {
-      candidateClass: classifierOutput.primaryPrediction.className,
-      classifierConfidence: classifierOutput.primaryPrediction.probability,
-      modelType: classifierOutput.modelType,
-      isCustomPlantModelLoaded: classifierOutput.isCustomPlantModelLoaded,
-      featureVectorLength: classifierOutput.featureVectorLength,
-      notes: gateDecision.gateNotes,
-      confidenceTier: gateDecision.confidenceTier,
-    },
-  };
+  try {
+    const payload = {
+      report: {
+        condition: structuredReport.condition,
+        state: structuredReport.state,
+        confidence: structuredReport.confidence,
+        confidenceTier: structuredReport.confidenceTier,
+        severity: structuredReport.severity,
+        observations: structuredReport.observations,
+        possibleCauses: structuredReport.possibleCauses,
+        recommendedActions: structuredReport.recommendedActions,
+        prevention: structuredReport.prevention,
+        uncertaintyNote: structuredReport.uncertaintyNote,
+      },
+      language,
+    };
 
-  const response = await fetch('/api/analyze-plant', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+    const response = await fetch('/api/explain-report', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    let parsedMsg = errorBody;
-    try {
-      const errJson = JSON.parse(errorBody);
-      parsedMsg = errJson.error || errorBody;
-    } catch {
-      // ignore
+    if (!response.ok) {
+      console.info('Explanation service unavailable, using grounded local report.');
+      return structuredReport;
     }
-    throw new Error(`AI Analysis service error: ${parsedMsg}`);
+
+    const data = await response.json();
+
+    return {
+      ...structuredReport,
+      summary: data.summary || structuredReport.summary,
+      condition: data.localizedCondition || structuredReport.condition,
+      observations: Array.isArray(data.localizedObservations) && data.localizedObservations.length > 0
+        ? data.localizedObservations
+        : structuredReport.observations,
+      possibleCauses: Array.isArray(data.localizedCauses) && data.localizedCauses.length > 0
+        ? data.localizedCauses
+        : structuredReport.possibleCauses,
+      recommendedActions: Array.isArray(data.localizedActions) && data.localizedActions.length > 0
+        ? data.localizedActions
+        : structuredReport.recommendedActions,
+      prevention: Array.isArray(data.localizedPrevention) && data.localizedPrevention.length > 0
+        ? data.localizedPrevention
+        : structuredReport.prevention,
+      uncertaintyNote: data.localizedUncertaintyNote || structuredReport.uncertaintyNote,
+      audioNarration: data.audioNarration || structuredReport.audioNarration,
+    };
+  } catch (err) {
+    console.info('Using grounded report directly without Gemini expansion:', err);
+    return structuredReport;
   }
-
-  const result = (await response.json()) as PlantAnalysisResult;
-
-  // Augment with real MobileNetV2 inference and pipeline metadata
-  result.classifierMetadata = {
-    pipelineStage: 'mobilenetv2_to_confidence_gate_to_gemini',
-    modelName: classifierOutput.modelName,
-    modelType: classifierOutput.modelType,
-    isCustomPlantModelLoaded: classifierOutput.isCustomPlantModelLoaded,
-    candidateClass: classifierOutput.primaryPrediction.className,
-    classifierProbability: classifierOutput.primaryPrediction.probability,
-    featureVectorLength: classifierOutput.featureVectorLength,
-    qualityPassed: gateDecision.passed,
-    inferenceTimeMs: classifierOutput.inferenceTimeMs,
-  };
-
-  return result;
 }
+
+// Backward compatibility alias
+export const requestGeminiGuidance = (
+  _image: string,
+  language: Language,
+  _classifier: any,
+  _gate: any,
+  report?: PlantAnalysisResult
+) => {
+  if (report) {
+    return requestGeminiExplanation(report, language);
+  }
+  throw new Error('Structured report required for Gemini explanation.');
+};
