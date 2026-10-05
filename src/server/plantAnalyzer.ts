@@ -19,8 +19,8 @@ export {
 
 dotenv.config();
 
-export const PRIMARY_MODEL = 'gemini-3.1-flash-lite';
-export const FALLBACK_MODEL = 'gemini-3.5-flash';
+export const PRIMARY_MODEL = 'gemini-3.8-flash';
+export const FALLBACK_MODEL = 'gemini-3.1-flash-lite';
 
 export interface AnalyzePlantRequest {
   imageBase64: string; // base64 string without data URL prefix or with it
@@ -50,21 +50,6 @@ export interface PlantAnalysisResponse {
 
 export const AnalyzePlantRequest = class {};
 export const PlantAnalysisResponse = class {};
-
-/**
- * Checks if an error is a permanent daily quota exhaustion (not a temporary rate burst).
- */
-export function isDailyQuotaExhausted(err: any): boolean {
-  if (!err) return false;
-  const msg = (err.message || '').toLowerCase();
-  return (
-    msg.includes('daily') ||
-    msg.includes('per project per model') ||
-    msg.includes('exceeded your current quota') ||
-    msg.includes('quota exceeded for metric') ||
-    msg.includes('retry in')
-  );
-}
 
 /**
  * Checks if an error is a transient rate limit (429) or temporary server overload (503).
@@ -117,10 +102,6 @@ async function callGeminiWithExponentialBackoff(
       }
     } catch (err: any) {
       lastError = err;
-      if (isDailyQuotaExhausted(err)) {
-        // Fast-fail to next model immediately without waiting on daily quota
-        throw err;
-      }
       const isTransient = isTransientError(err);
       if (isTransient && attempt < maxAttempts - 1) {
         const backoffMs = Math.pow(2, attempt) * 1000;
@@ -288,7 +269,10 @@ Provide the diagnostic assessment strictly according to the required JSON schema
       2
     );
   } catch (primaryError: any) {
-    console.info(`Primary model (${PRIMARY_MODEL}) unavailable, switching to (${FALLBACK_MODEL}).`);
+    console.warn(
+      `Primary model (${PRIMARY_MODEL}) failed. Falling back to (${FALLBACK_MODEL}). Cause:`,
+      primaryError?.message || primaryError
+    );
 
     // 2. Fallback Model (gemini-3.1-flash-lite) with exponential backoff
     try {
@@ -301,39 +285,18 @@ Provide the diagnostic assessment strictly according to the required JSON schema
         2
       );
     } catch (fallbackError: any) {
-      console.info(`Both AI models temporarily unavailable, generating grounded guidance from agricultural database.`);
+      console.error(
+        `Both primary (${PRIMARY_MODEL}) and fallback (${FALLBACK_MODEL}) models failed:`,
+        fallbackError
+      );
 
-      // 3. Graceful Agricultural Knowledge Base Fallback
-      const plantLabel = candidatePlant || 'Plant';
-      const condLabel = candidateCondition || 'Leaf Condition';
-      const kbMatches = findKnowledgeMatches(plantLabel, undefined, condLabel);
-      const topMatch = kbMatches[0]?.entry;
+      const isTransient =
+        isTransientError(fallbackError) || isTransientError(primaryError);
+      if (isTransient) {
+        throw new Error(langConfig.messages.overloaded);
+      }
 
-      const conditionName = topMatch?.disease || (candidateCondition ? `${plantLabel} ${condLabel}` : 'Foliage Spot / Blight');
-      const symptomsList = topMatch?.symptoms
-        ? (Array.isArray(topMatch.symptoms) ? topMatch.symptoms : [topMatch.symptoms])
-        : ['Leaf discoloration and visible surface spots observed on foliage.'];
-
-      const treatmentsList = topMatch?.treatment
-        ? (typeof topMatch.treatment === 'object' && 'organic' in topMatch.treatment && Array.isArray(topMatch.treatment.organic)
-            ? topMatch.treatment.organic
-            : [JSON.stringify(topMatch.treatment)])
-        : ['Prune severely infected leaves and dispose away from the field.', 'Apply organic neem oil spray or copper-based fungicide at 7-day intervals.'];
-
-      const prevList = topMatch?.prevention && Array.isArray(topMatch.prevention)
-        ? topMatch.prevention
-        : ['Ensure proper plant spacing for sunlight and air circulation.', 'Water at the soil base to keep foliage dry.'];
-
-      return {
-        condition: conditionName,
-        confidence: Math.max(65, Math.min(88, Math.round((reqData.classifierContext?.classifierConfidence || 0.7) * 100))),
-        severity: (topMatch?.severity as any) || 'Moderate',
-        observations: symptomsList,
-        possibleCauses: topMatch?.pathogen ? [topMatch.pathogen] : ['Fungal infection or environmental moisture stress.'],
-        recommendedActions: treatmentsList,
-        prevention: prevList,
-        uncertaintyNote: langConfig.messages.defaultSafetyNote,
-      };
+      throw new Error(langConfig.messages.genericError);
     }
   }
 

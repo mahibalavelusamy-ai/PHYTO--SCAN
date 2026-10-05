@@ -8,8 +8,8 @@ import {
 
 dotenv.config();
 
-export const CHAT_MODEL = 'gemini-3.1-flash-lite';
-export const CHAT_FALLBACK_MODEL = 'gemini-3.5-flash';
+export const CHAT_MODEL = 'gemini-3.5-flash';
+export const CHAT_FALLBACK_MODEL = 'gemini-3.1-flash-lite';
 
 export interface ChatMessage {
   role: 'user' | 'model';
@@ -122,34 +122,27 @@ ROLE & BEHAVIORAL GUIDELINES:
       model: CHAT_MODEL,
     };
   } catch (err: any) {
-    console.info(`Primary chat model ${CHAT_MODEL} unavailable, switching to ${CHAT_FALLBACK_MODEL}.`);
+    console.warn(`Primary chat model ${CHAT_MODEL} encountered an issue:`, err?.message || err);
+    console.log(`Falling back to ${CHAT_FALLBACK_MODEL}...`);
     chosenModel = CHAT_FALLBACK_MODEL;
 
-    try {
-      const fallbackResponse = await ai.models.generateContent({
-        model: CHAT_FALLBACK_MODEL,
-        contents,
-        config: {
-          systemInstruction,
-          temperature: 0.7,
-        },
-      });
+    const fallbackResponse = await ai.models.generateContent({
+      model: CHAT_FALLBACK_MODEL,
+      contents,
+      config: {
+        systemInstruction,
+        temperature: 0.7,
+      },
+    });
 
-      const reply = (fallbackResponse.text || '').trim();
-      if (!reply) {
-        throw new Error('Empty response received from fallback model.');
-      }
-
-      return {
-        reply,
-        model: CHAT_FALLBACK_MODEL,
-      };
-    } catch (fallbackErr: any) {
-      console.info('Both AI models busy, providing contextual agronomic guidance.');
-      return {
-        reply: `Based on your report for ${cropName} (${conditionName}), we recommend adhering to the prescribed initial treatments (${actions}) and ensuring good air circulation. For severe outbreaks or persistent spread, consult your local agricultural extension service (KVK) for direct on-field inspection.`,
-        model: 'phytoscan-agronomist-advisor',
-      };
+    const reply = (fallbackResponse.text || '').trim();
+    if (!reply) {
+      throw new Error('Chat service temporarily unavailable. Please retry in a moment.');
     }
+
+    return {
+      reply,
+      model: CHAT_FALLBACK_MODEL,
+    };
   }
 }
