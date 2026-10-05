@@ -42,3 +42,6 @@ export interface KBSearchResult {
     matchedKeywords: string[];
   };
 }
+
+// Runtime token to ensure compatibility with non-type-only ESM imports
+export const KBSearchResult = class {};

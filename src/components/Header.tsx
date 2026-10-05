@@ -1,5 +1,5 @@
 import React from 'react';
-import { Leaf, History, Sparkles, User as UserIcon, Globe, Cpu, LogOut } from 'lucide-react';
+import { Leaf, History, User as UserIcon, Globe, LogOut, Camera, Info } from 'lucide-react';
 import { Language, translations } from '../utils/i18n';
 import { User } from 'firebase/auth';
 
@@ -12,6 +12,7 @@ interface HeaderProps {
   onOpenAuth: () => void;
   onSignOut: () => void;
   onOpenArchitecture: () => void;
+  onStartScan?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,13 +24,14 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAuth,
   onSignOut,
   onOpenArchitecture,
+  onStartScan,
 }) => {
   const t = translations[language];
 
   return (
-    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-stone-200">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
-        {/* Brand & Tagline */}
+        {/* Brand & Logo: 🌿 PhytoScan */}
         <div
           onClick={() => setCurrentTab('home')}
           className="flex items-center gap-3 cursor-pointer group select-none"
@@ -52,41 +54,55 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Navigation & Controls */}
+        {/* Navigation: Home | Scan | History | About | Login */}
         <div className="flex items-center gap-2 sm:gap-4">
           <nav className="flex items-center bg-stone-100 p-1 rounded-xl">
+            {/* Home */}
             <button
               onClick={() => setCurrentTab('home')}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                 currentTab === 'home'
                   ? 'bg-white text-emerald-800 shadow-sm'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              {t.navHome}
+              {t.navHome || 'Home'}
             </button>
+
+            {/* Scan */}
+            <button
+              onClick={() => {
+                if (currentTab !== 'home') setCurrentTab('home');
+                if (onStartScan) onStartScan();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-stone-600 hover:text-emerald-800 hover:bg-emerald-50/60 transition-all cursor-pointer"
+            >
+              <Camera className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Scan</span>
+            </button>
+
+            {/* History */}
             <button
               onClick={() => setCurrentTab('history')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                 currentTab === 'history'
                   ? 'bg-white text-emerald-800 shadow-sm'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
               <History className="w-3.5 h-3.5" />
-              <span>{t.navHistory}</span>
+              <span>{t.navHistory || 'History'}</span>
+            </button>
+
+            {/* About */}
+            <button
+              onClick={onOpenArchitecture}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-stone-600 hover:text-emerald-800 hover:bg-emerald-50/60 transition-all cursor-pointer hidden md:flex"
+            >
+              <Info className="w-3.5 h-3.5 text-stone-500" />
+              <span>About</span>
             </button>
           </nav>
-
-          {/* Architecture Details Modal Trigger */}
-          <button
-            onClick={onOpenArchitecture}
-            title={t.pipelineBadge}
-            className="p-2 text-stone-500 hover:text-emerald-700 hover:bg-stone-100 rounded-xl transition-colors hidden md:flex items-center gap-1.5 text-xs font-medium"
-          >
-            <Cpu className="w-4 h-4 text-emerald-600" />
-            <span>{t.navArchitecture}</span>
-          </button>
 
           {/* Language Selector */}
           <div className="flex items-center bg-stone-100 rounded-xl px-2.5 py-1.5 border border-stone-200 hover:border-emerald-300 transition-colors shadow-2xs">
@@ -103,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
                 }
               }}
               aria-label="Language selection"
-              className="bg-transparent text-xs font-bold text-stone-800 focus:outline-none cursor-pointer pr-1"
+              className="bg-transparent text-xs font-bold text-stone-800 focus:outline-hidden cursor-pointer pr-1"
             >
               <option value="en">English</option>
               <option value="ta">தமிழ்</option>
@@ -113,7 +129,7 @@ export const Header: React.FC<HeaderProps> = ({
             </select>
           </div>
 
-          {/* Auth State Button */}
+          {/* Login / Auth Button */}
           {currentUser && !currentUser.isAnonymous ? (
             <div className="flex items-center gap-1.5 pl-1 border-l border-stone-200">
               <span
@@ -125,7 +141,8 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={onSignOut}
                 title={t.signOut}
-                className="p-2 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                className="p-2 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                aria-label="Sign out"
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -133,12 +150,10 @@ export const Header: React.FC<HeaderProps> = ({
           ) : (
             <button
               onClick={onOpenAuth}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:text-emerald-800 bg-stone-100 hover:bg-emerald-50 rounded-xl border border-stone-200 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:text-emerald-800 bg-stone-100 hover:bg-emerald-50 rounded-xl border border-stone-200 transition-colors cursor-pointer"
             >
               <UserIcon className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden sm:inline">
-                {currentUser?.isAnonymous ? t.guestUser : t.signIn}
-              </span>
+              <span>{currentUser?.isAnonymous ? t.guestUser : 'Login'}</span>
             </button>
           )}
         </div>

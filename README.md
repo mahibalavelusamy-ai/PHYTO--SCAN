@@ -30,6 +30,82 @@ Comprehensive Diagnostic Report & Actionable Next Steps
 
 ---
 
+## Environment Variables
+
+Create a `.env` file in the root of the project with the following configuration:
+
+| Variable | Required | Description |
+| :--- | :---: | :--- |
+| `GEMINI_API_KEY` | **Yes** | Google Gemini API key used by the backend proxy (`/api/analyze-plant`). Kept strictly server-side. |
+| `CUSTOM_MODEL_URL` | *Optional* | Remote folder URL containing `model.json`, weight shards (`.bin`), and `labels.json` for custom on-device plant disease classification. |
+| `PORT` | *Optional* | Port number for Express server (defaults to `3000`). |
+| `NODE_ENV` | *Optional* | Set to `production` in production environments. |
+
+Example `.env`:
+```env
+GEMINI_API_KEY="AIzaSy..."
+CUSTOM_MODEL_URL="https://storage.googleapis.com/your-plant-models/mobilenetv2"
+PORT=3000
+```
+
+---
+
+## Setup & Local Development
+
+1. **Clone and install dependencies:**
+   ```bash
+   npm install
+   ```
+
+2. **Configure environment:**
+   Copy `.env.example` to `.env` and provide your `GEMINI_API_KEY`:
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Start development server:**
+   ```bash
+   npm run dev
+   ```
+   Open `http://localhost:3000` in your web browser.
+
+4. **Run type checks & linting:**
+   ```bash
+   npm run lint
+   ```
+
+---
+
+## How to Deploy
+
+PhytoScan is built as a full-stack Node.js + React application.
+
+1. **Build the production client:**
+   ```bash
+   npm run build
+   ```
+   This compiles and minifies the React SPA into the `dist/` directory and registers the service worker (`/sw.js`).
+
+2. **Start the production server:**
+   ```bash
+   npm start
+   ```
+   In production (`NODE_ENV=production`), Express statically serves the pre-built `dist/` assets and proxies AI requests through `/api/analyze-plant`.
+
+3. **Deploying to Cloud Run / Docker:**
+   - Package with a Node.js 20+ runtime.
+   - Set environment variable `NODE_ENV=production` and `PORT=3000` (or Cloud Run's `$PORT`).
+   - Inject `GEMINI_API_KEY` via Google Cloud Secret Manager.
+   - Run command: `npm run build && npm start`.
+
+4. **Firestore Security Rules:**
+   Ensure `firestore.rules` is deployed to your Firebase project:
+   ```bash
+   firebase deploy --only firestore:rules
+   ```
+
+---
+
 ## Training and plugging in the model
 
 PhytoScan is architected to load a custom-trained MobileNetV2 model fine-tuned on the PlantVillage dataset (38 classes covering 14 crop species). The model runs directly in the client browser with TensorFlow.js and caches automatically in IndexedDB (`indexeddb://phytoscan-model`) for offline field use.

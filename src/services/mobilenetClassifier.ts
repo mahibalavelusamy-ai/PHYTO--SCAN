@@ -4,7 +4,7 @@
  * Supports:
  * 1. Custom-trained MobileNetV2 plant-disease model (PlantVillage, 38 classes, 14 crops)
  *    loaded in the browser with TensorFlow.js from CUSTOM_MODEL_URL.
- * 2. Automatic IndexedDB caching (model.save('indexeddb://phytoscan-model')) for offline use.
+ * 2. Automatic IndexedDB caching for offline use.
  * 3. Graceful fallback to stock MobileNetV2 feature backbone if CUSTOM_MODEL_URL is unset or fails.
  * 4. Honest reporting: top 3 predictions with percentages, 14 crops disclosure, and "Not sure" if below gate.
  */
@@ -16,22 +16,16 @@ import {
   PlantDiseaseClassDef,
   getPlantDiseaseClassByLabel,
   isCropSupportedByCustomModel,
-  SUPPORTED_PLANTVILLAGE_CROPS,
 } from '../config/plantDiseaseLabels';
 import { preprocessForPlantMobileNetV2 } from './plantAnalysis/preprocessor';
+import {
+  getCustomModelUrl,
+  tryLoadFromIndexedDB,
+  fetchAndCacheCustomModel,
+  ModelProgressCallback,
+} from './customModelStorage';
 
-export function getCustomModelUrl(): string {
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_CUSTOM_MODEL_URL) {
-    return (import.meta as any).env.VITE_CUSTOM_MODEL_URL;
-  }
-  if (typeof process !== 'undefined' && process.env?.CUSTOM_MODEL_URL) {
-    return process.env.CUSTOM_MODEL_URL;
-  }
-  if (typeof window !== 'undefined' && (window as any).__CUSTOM_MODEL_URL__) {
-    return (window as any).__CUSTOM_MODEL_URL__;
-  }
-  return '';
-}
+export { getCustomModelUrl };
 
 export interface MobileNetPrediction {
   className: string;
@@ -63,8 +57,6 @@ export interface MobileNetInferenceResult {
   };
 }
 
-export type ModelLoadingListener = (progressPercent: number, statusText: string) => void;
-
 export class MobileNetV2Service {
   private static instance: MobileNetV2Service | null = null;
   
@@ -76,7 +68,7 @@ export class MobileNetV2Service {
   
   private isInitializing = false;
   private initPromise: Promise<void> | null = null;
-  private loadingListeners: Set<ModelLoadingListener> = new Set();
+  private loadingListeners: Set<ModelProgressCallback> = new Set();
 
   private readonly GATE_THRESHOLD = 0.50; // Below this threshold, say "Not sure"
 
@@ -89,7 +81,7 @@ export class MobileNetV2Service {
     return MobileNetV2Service.instance;
   }
 
-  public subscribeLoading(listener: ModelLoadingListener): () => void {
+  public subscribeLoading(listener: ModelProgressCallback): () => void {
     this.loadingListeners.add(listener);
     return () => this.loadingListeners.delete(listener);
   }
@@ -116,28 +108,26 @@ export class MobileNetV2Service {
     this.initPromise = (async () => {
       try {
         await tf.ready();
-        console.log(`[PhytoScan] TensorFlow.js initialized. Backend: ${tf.getBackend()}`);
-
         const configuredUrl = getCustomModelUrl();
 
-        // 1. Try to load custom plant disease model if CUSTOM_MODEL_URL is set or if cached in IndexedDB
-        let customLoaded = false;
-
+        let bundle = null;
         if (configuredUrl) {
-          customLoaded = await this.loadCustomPlantDiseaseModel(configuredUrl);
+          bundle = await fetchAndCacheCustomModel(configuredUrl, (p, m) => this.notifyLoading(p, m));
         } else {
-          // If no URL configured, check if we have a previously cached model in IndexedDB
-          customLoaded = await this.tryLoadFromIndexedDB();
+          bundle = await tryLoadFromIndexedDB((p, m) => this.notifyLoading(p, m));
         }
 
-        // 2. If custom model was not loaded, load standard MobileNetV2 backbone as fallback
-        if (!customLoaded && !this.backboneModel) {
+        if (bundle) {
+          this.customPlantModel = bundle.model;
+          this.customModelLabels = bundle.labels;
+          this.isCustomModelFromIndexedDB = bundle.isFromIndexedDB;
+          this.customModelUrl = bundle.url;
+        } else if (!this.backboneModel) {
           this.notifyLoading(50, 'Loading MobileNetV2 feature backbone...');
           this.backboneModel = await mobilenet.load({
             version: 2,
             alpha: 1.0,
           });
-          console.log('[PhytoScan] Standard MobileNetV2 backbone loaded as fallback.');
           this.notifyLoading(100, 'MobileNetV2 ready.');
         }
       } catch (err) {
@@ -150,120 +140,16 @@ export class MobileNetV2Service {
     return this.initPromise;
   }
 
-  /**
-   * Attempts to load the custom model and labels from IndexedDB (offline support).
-   */
-  private async tryLoadFromIndexedDB(): Promise<boolean> {
-    try {
-      this.notifyLoading(30, 'Checking local IndexedDB model cache...');
-      const model = await tf.loadLayersModel('indexeddb://phytoscan-model');
-      
-      const cachedLabelsStr = localStorage.getItem('phytoscan_custom_model_labels');
-      if (cachedLabelsStr) {
-        const parsed = JSON.parse(cachedLabelsStr);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          this.customModelLabels = parsed;
-        }
-      }
-
-      this.customPlantModel = model;
-      this.isCustomModelFromIndexedDB = true;
-      console.log('[PhytoScan] Custom plant-disease model successfully loaded from IndexedDB cache.');
-      this.notifyLoading(100, 'Custom plant model loaded from offline cache.');
-      return true;
-    } catch (e) {
-      // IndexedDB cache doesn't exist or is invalid
-      return false;
-    }
-  }
-
-  /**
-   * Loads custom fine-tuned Plant-Disease MobileNetV2 model and labels.json from a remote folder,
-   * caches them in IndexedDB, and falls back to IndexedDB if offline.
-   */
   public async loadCustomPlantDiseaseModel(folderUrl: string): Promise<boolean> {
-    const baseUrl = folderUrl.replace(/\/+$/, '');
-    const modelJsonUrl = `${baseUrl}/model.json`;
-    const labelsJsonUrl = `${baseUrl}/labels.json`;
-
-    this.notifyLoading(10, 'Connecting to custom plant model...');
-
-    // If offline, prioritize IndexedDB cache
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      console.log('[PhytoScan] Device is offline. Attempting to load custom model from IndexedDB...');
-      const loadedFromCache = await this.tryLoadFromIndexedDB();
-      if (loadedFromCache) return true;
-    }
-
-    try {
-      await tf.ready();
-      console.log(`[PhytoScan] Fetching model from: ${modelJsonUrl}`);
-
-      // 1. Fetch labels.json
-      this.notifyLoading(25, 'Downloading model labels...');
-      try {
-        const labelsResp = await fetch(labelsJsonUrl);
-        if (labelsResp.ok) {
-          const labelsArray = await labelsResp.json();
-          if (Array.isArray(labelsArray)) {
-            this.customModelLabels = labelsArray;
-            try {
-              localStorage.setItem('phytoscan_custom_model_labels', JSON.stringify(labelsArray));
-            } catch (err) {
-              console.warn('[PhytoScan] Could not cache labels in localStorage:', err);
-            }
-          }
-        }
-      } catch (labelErr) {
-        console.warn('[PhytoScan] Could not download remote labels.json:', labelErr);
-      }
-
-      // 2. Load model with progress tracking
-      this.notifyLoading(40, 'Downloading MobileNetV2 neural weights...');
-      let model: tf.LayersModel | tf.GraphModel | null = null;
-      try {
-        model = await tf.loadLayersModel(modelJsonUrl, {
-          onProgress: (fraction: number) => {
-            const pct = Math.round(40 + fraction * 50);
-            this.notifyLoading(pct, `Loading model weights: ${Math.round(fraction * 100)}%`);
-          },
-        });
-      } catch (layerErr) {
-        console.log('[PhytoScan] loadLayersModel failed, trying loadGraphModel...');
-        model = await tf.loadGraphModel(modelJsonUrl, {
-          onProgress: (fraction: number) => {
-            const pct = Math.round(40 + fraction * 50);
-            this.notifyLoading(pct, `Loading model weights: ${Math.round(fraction * 100)}%`);
-          },
-        });
-      }
-
-      this.customPlantModel = model;
-      this.customModelUrl = baseUrl;
-      this.isCustomModelFromIndexedDB = false;
-
-      // 3. Cache the model to IndexedDB for offline use
-      try {
-        if ('save' in model) {
-          await (model as tf.LayersModel).save('indexeddb://phytoscan-model');
-          console.log('[PhytoScan] Successfully cached custom model to indexeddb://phytoscan-model');
-        }
-      } catch (cacheErr) {
-        console.warn('[PhytoScan] Could not save model to IndexedDB:', cacheErr);
-      }
-
-      this.notifyLoading(100, 'Custom plant model ready.');
-      console.log('[PhytoScan] Custom MobileNetV2 plant model loaded successfully.');
+    const bundle = await fetchAndCacheCustomModel(folderUrl, (p, m) => this.notifyLoading(p, m));
+    if (bundle) {
+      this.customPlantModel = bundle.model;
+      this.customModelLabels = bundle.labels;
+      this.isCustomModelFromIndexedDB = bundle.isFromIndexedDB;
+      this.customModelUrl = bundle.url;
       return true;
-    } catch (err) {
-      console.warn(`[PhytoScan] Failed to load remote model from ${baseUrl}:`, err);
-      // Try IndexedDB as fallback
-      const cached = await this.tryLoadFromIndexedDB();
-      if (cached) return true;
-
-      this.customPlantModel = null;
-      return false;
     }
+    return false;
   }
 
   private async resolveImageElement(
@@ -293,9 +179,6 @@ export class MobileNetV2Service {
     return img;
   }
 
-  /**
-   * Runs actual TensorFlow.js inference on the leaf image.
-   */
   public async classify(
     imageSource: string | HTMLImageElement | HTMLCanvasElement
   ): Promise<MobileNetInferenceResult> {
@@ -304,27 +187,23 @@ export class MobileNetV2Service {
     const imgElement = await this.resolveImageElement(imageSource);
     const startTime = performance.now();
 
-    // 1. If custom PlantVillage model is active, execute fine-tuned plant disease inference
+    // 1. Custom model branch
     if (this.customPlantModel) {
       return this.inferWithCustomDiseaseModel(imgElement, startTime);
     }
 
-    // 2. Otherwise run standard MobileNetV2 backbone (feature extraction)
+    // 2. MobileNetV2 backbone fallback
     if (!this.backboneModel) {
       throw new Error('MobileNetV2 backbone is not ready.');
     }
     return this.inferWithMobileNetBackbone(imgElement, startTime);
   }
 
-  /**
-   * Inference via custom fine-tuned Plant-Disease MobileNetV2 model
-   */
   private async inferWithCustomDiseaseModel(
     imgElement: HTMLImageElement,
     startTime: number
   ): Promise<MobileNetInferenceResult> {
     const predictions = tf.tidy(() => {
-      // Preprocessing matching training: 224x224 RGB, [-1, 1] range via (pixel / 127.5 - 1)
       const tensor = preprocessForPlantMobileNetV2(imgElement);
       const outputTensor = (this.customPlantModel as any).predict(tensor) as tf.Tensor;
       return Array.from(outputTensor.dataSync());
@@ -332,8 +211,7 @@ export class MobileNetV2Service {
 
     const inferenceTimeMs = Math.round(performance.now() - startTime);
 
-    // Map each prediction by string matching with labels.json to src/config/plantDiseaseLabels.ts
-    // NEVER map by array index!
+    // Map predictions by string matching with labels.json to plantDiseaseLabels.ts
     const scored: MobileNetPrediction[] = predictions.map((prob, idx) => {
       const labelString = this.customModelLabels[idx] || (PLANT_DISEASE_LABELS[idx]?.label ?? `Class_${idx}`);
       const labelDef: PlantDiseaseClassDef | undefined = getPlantDiseaseClassByLabel(labelString);
@@ -354,10 +232,8 @@ export class MobileNetV2Service {
       };
     });
 
-    // Sort descending by probability
     scored.sort((a, b) => b.probability - a.probability);
 
-    // Top 3 predictions with percentages
     const top3Predictions = scored.slice(0, 3);
     const topPredictions = scored.slice(0, 5);
     const primary = topPredictions[0] || {
@@ -367,11 +243,9 @@ export class MobileNetV2Service {
       labelString: '',
     };
 
-    // Confidence gate check: If below gate threshold, say "Not sure" instead of disease name
     const isBelowGate = primary.probability < this.GATE_THRESHOLD;
     const finalPredictedClass = isBelowGate ? 'Not sure' : primary.className;
 
-    // Coverage check: check if the crop is in the model's 14 crops
     const detectedCrop = primary.crop || (primary.labelString ? primary.labelString.split('___')[0] : '');
     const isCropCovered = isCropSupportedByCustomModel(detectedCrop);
 
@@ -400,10 +274,6 @@ export class MobileNetV2Service {
     };
   }
 
-  /**
-   * Inference via standard MobileNetV2 backbone (ImageNet weights)
-   * Used strictly as low-priority context for Gemini. ImageNet labels are NEVER shown to the user.
-   */
   private async inferWithMobileNetBackbone(
     imgElement: HTMLImageElement,
     startTime: number
@@ -444,7 +314,7 @@ export class MobileNetV2Service {
     return {
       modelType: 'mobilenet-v2-imagenet-backbone',
       isCustomPlantModelLoaded: false,
-      predictedClass: primary.className, // Kept internal for server-side Gemini context only!
+      predictedClass: primary.className,
       confidence: primary.probability,
       topPredictions,
       top3Predictions: topPredictions.slice(0, 3),

@@ -18,7 +18,7 @@ import { SampleLeaf } from './utils/sampleLeaves';
 
 // UI Components
 import { Header } from './components/Header';
-import { HeroSection } from './components/HeroSection';
+import { LandingView } from './components/LandingView';
 import { CameraModal } from './components/CameraModal';
 import { ImagePreviewCard } from './components/ImagePreviewCard';
 import { AnalysisProgressModal } from './components/AnalysisProgressModal';
@@ -26,7 +26,9 @@ import { ResultView } from './components/ResultView';
 import { ScanHistoryView } from './components/ScanHistoryView';
 import { ArchitectureModal } from './components/ArchitectureModal';
 import { AuthModal } from './components/AuthModal';
-import { AlertCircle, Leaf, Sparkles, HeartHandshake } from 'lucide-react';
+import { AppFooter } from './components/AppFooter';
+import { ModelLoadingToast } from './components/ModelLoadingToast';
+import { AlertCircle } from 'lucide-react';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -261,6 +263,7 @@ export default function App() {
         onOpenAuth={() => setIsAuthOpen(true)}
         onSignOut={() => signOut(auth)}
         onOpenArchitecture={() => setIsArchitectureOpen(true)}
+        onStartScan={() => setIsCameraOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -309,12 +312,13 @@ export default function App() {
                 />
               </div>
             ) : (
-              /* Default Landing: Hero Section with Take Photo / Upload buttons & Samples */
-              <HeroSection
+              /* Default Landing: Wireframe layout with Hero, How It Works, and Why PhytoScan */
+              <LandingView
                 language={language}
                 onTakePhoto={() => setIsCameraOpen(true)}
                 onSelectImageFile={handleSelectImageFile}
                 onSelectSample={handleSelectSample}
+                onOpenArchitecture={() => setIsArchitectureOpen(true)}
               />
             )}
           </>
@@ -347,33 +351,10 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-stone-200 py-8 px-4 sm:px-6 mt-12 text-center text-xs text-stone-500">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
-              <Leaf className="w-3.5 h-3.5" />
-            </div>
-            <span className="font-extrabold text-stone-800 tracking-tight">
-              PhytoScan
-            </span>
-            <span className="text-stone-400">|</span>
-            <span className="text-stone-600 font-medium">AGRIMIND Initiative</span>
-          </div>
-
-          <p className="font-medium text-stone-500">
-            {language === 'ta'
-              ? '“ஸ்கேன் செய்க. கண்டறிக. உடனே தீர்வு காண்க.”'
-              : '“Scan. Diagnose. Act early.”'}
-          </p>
-
-          <button
-            onClick={() => setIsArchitectureOpen(true)}
-            className="text-stone-500 hover:text-emerald-700 font-medium transition-colors"
-          >
-            MobileNetV2 + Gemini AI Specs
-          </button>
-        </div>
-      </footer>
+      <AppFooter
+        language={language}
+        onOpenArchitecture={() => setIsArchitectureOpen(true)}
+      />
 
       {/* Modals */}
       <CameraModal
@@ -404,23 +385,7 @@ export default function App() {
       />
 
       {/* Lazy Custom Model Loading Progress Indicator */}
-      {modelLoadingStatus && modelLoadingStatus.isLoading && (
-        <div className="fixed bottom-4 right-4 z-50 bg-white/95 backdrop-blur-md border border-stone-200 shadow-xl rounded-2xl p-3 px-4 flex items-center gap-3 text-xs max-w-sm">
-          <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-stone-800 truncate">{modelLoadingStatus.message}</p>
-            <div className="w-full bg-stone-100 rounded-full h-1.5 mt-1 overflow-hidden">
-              <div
-                className="bg-emerald-600 h-full rounded-full transition-all duration-300"
-                style={{ width: `${modelLoadingStatus.progress}%` }}
-              />
-            </div>
-          </div>
-          <span className="font-mono font-bold text-emerald-700 text-[11px] shrink-0">
-            {modelLoadingStatus.progress}%
-          </span>
-        </div>
-      )}
+      <ModelLoadingToast status={modelLoadingStatus} />
     </div>
   );
 }

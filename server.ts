@@ -1,4 +1,5 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -6,8 +7,17 @@ import {
   analyzePlantLeafWithGemini,
   PRIMARY_MODEL,
   FALLBACK_MODEL,
-  AnalyzePlantRequest,
+  type AnalyzePlantRequest,
 } from './src/server/plantAnalyzer.ts';
+import {
+  handlePlantChatWithGemini,
+  CHAT_MODEL,
+  CHAT_FALLBACK_MODEL,
+} from './src/server/plantChat.ts';
+import {
+  transcribeAudioWithGemini,
+  TRANSCRIBE_MODEL,
+} from './src/server/audioTranscriber.ts';
 
 dotenv.config();
 
@@ -96,6 +106,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
     models: {
       primary: PRIMARY_MODEL,
       fallback: FALLBACK_MODEL,
+      chat: CHAT_MODEL,
+      chatFallback: CHAT_FALLBACK_MODEL,
+      transcribe: TRANSCRIBE_MODEL,
     },
     timestamp: new Date().toISOString(),
   });
@@ -178,7 +191,64 @@ app.post('/api/analyze-plant', rateLimiter, async (req: Request, res: Response) 
   }
 });
 
-// 5. Development (Vite Middleware) vs Production (Static Serving)
+// 5. Multi-Turn Agronomist Chat Endpoint
+app.post('/api/chat-plant', rateLimiter, async (req: Request, res: Response) => {
+  try {
+    const { messages, reportContext, language } = req.body || {};
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({
+        error: 'Conversation messages array is required.',
+      });
+    }
+
+    const effectiveLanguage =
+      typeof language === 'string' && SUPPORTED_LANGUAGES.has(language.toLowerCase().trim())
+        ? (language.toLowerCase().trim() as 'en' | 'ta' | 'te' | 'kn' | 'ml')
+        : 'en';
+
+    const response = await handlePlantChatWithGemini({
+      messages,
+      reportContext,
+      language: effectiveLanguage,
+    });
+
+    return res.status(200).json(response);
+  } catch (err: any) {
+    console.error('Server /api/chat-plant error:', err?.message || err);
+    return res.status(500).json({
+      error: err?.message || 'Chat service encountered an error. Please try again.',
+    });
+  }
+});
+
+// 6. Speech-to-Text Audio Transcription Endpoint
+app.post('/api/transcribe-audio', rateLimiter, async (req: Request, res: Response) => {
+  try {
+    const { audioBase64, mimeType, language } = req.body || {};
+
+    if (!audioBase64 || typeof audioBase64 !== 'string') {
+      return res.status(400).json({
+        error: 'Audio data is required for transcription.',
+      });
+    }
+
+    const response = await transcribeAudioWithGemini({
+      audioBase64,
+      mimeType,
+      language,
+    });
+
+    return res.status(200).json(response);
+  } catch (err: any) {
+    console.error('Server /api/transcribe-audio error:', err?.message || err);
+    return res.status(500).json({
+      error: err?.message || 'Audio transcription failed. Please try speaking again.',
+    });
+  }
+});
+
+// 7. Development (Vite Middleware) vs Production (Static Serving)
 async function startServer() {
   if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');

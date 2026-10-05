@@ -88,8 +88,12 @@ export async function runPlantHealthPipeline(
     );
   } else {
     try {
+      const guidanceImage = preprocessed.originalDataUrl.startsWith('data:image/svg')
+        ? preprocessed.normalizedDataUrl
+        : preprocessed.originalDataUrl;
+
       result = await requestGeminiGuidance(
-        preprocessed.originalDataUrl,
+        guidanceImage,
         language,
         classifierOutput,
         gateDecision

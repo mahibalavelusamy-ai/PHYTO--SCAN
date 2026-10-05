@@ -1,5 +1,5 @@
 import { knowledgeBase } from '../data/index.ts';
-import { KnowledgeBaseEntry, KBSearchResult } from '../types.ts';
+import type { KnowledgeBaseEntry, KBSearchResult } from '../types.ts';
 
 // Common stop words to exclude from keyword extraction
 const STOP_WORDS = new Set([
@@ -12,8 +12,13 @@ const STOP_WORDS = new Set([
 /**
  * Normalizes a string by lowercasing, replacing punctuation with spaces, and trimming.
  */
-function normalizeText(text: string): string {
-  return (text || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+function normalizeText(text: unknown): string {
+  if (typeof text !== 'string') {
+    if (text === null || text === undefined) return '';
+    if (Array.isArray(text)) return text.map((item) => normalizeText(item)).join(' ');
+    return String(text).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+  }
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
 }
 
 /**

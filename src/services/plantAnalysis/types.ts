@@ -87,3 +87,11 @@ export interface PipelineInput {
   language: Language;
   onProgress?: (stage: string, progressPercent: number) => void;
 }
+
+// Runtime tokens for Node.js ESM compatibility
+export const PreprocessedImageData = class {};
+export const ClassifierPrediction = class {};
+export const ClassifierOutput = class {};
+export const GateDecision = class {};
+export const PlantAnalysisResult = class {};
+export const PipelineInput = class {};

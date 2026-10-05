@@ -2,7 +2,8 @@
   "name": "Remix PhytoScan - Plant Health Assistant",
   "description": "Scan. Diagnose. Act early. AI-assisted plant-health assessment with practical next steps by AGRIMIND.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "microphone"
   ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
